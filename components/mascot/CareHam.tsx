@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CARE_HAM_CONFIG, DEFAULT_MASCOT_IMAGE, type ActiveCareHamType } from "@/lib/mascot/mascot-config";
 
-export type CareHamSize = "SMALL" | "MEDIUM" | "LARGE";
+export type CareHamSize = "XS" | "SMALL" | "MEDIUM" | "LARGE";
 export type CareHamReactionType = "WAVE" | "BOUNCE" | "CHEER" | "FADE";
 
 export interface CareHamProps {
@@ -14,7 +14,8 @@ export interface CareHamProps {
   className?: string;
 }
 
-const SIZE_PX: Record<CareHamSize, number> = { SMALL: 56, MEDIUM: 88, LARGE: 132 };
+/** XS는 상단 내비게이션처럼 아주 작은 버튼 안에 케어햄을 넣을 때만 쓴다. */
+const SIZE_PX: Record<CareHamSize, number> = { XS: 40, SMALL: 56, MEDIUM: 88, LARGE: 132 };
 
 const REACTION_CLASS: Record<CareHamReactionType, string> = {
   WAVE: "[animation:wave-wiggle_1.2s_ease-in-out_2]",

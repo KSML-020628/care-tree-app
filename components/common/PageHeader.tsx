@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowLeft, TreePine } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
+import CareHamHomeButton from "@/components/navigation/CareHamHomeButton";
 import { UI_TEXT } from "@/lib/constants/ui-text";
 
 interface PageHeaderProps {
@@ -27,11 +28,7 @@ export default function PageHeader({ title, subtitle, onBack, rightSlot, showLog
             <ArrowLeft aria-hidden="true" size={26} strokeWidth={2.6} />
           </button>
         )}
-        {showLogo && (
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary-blue-light/30 text-primary-blue">
-            <TreePine aria-hidden="true" size={28} />
-          </div>
-        )}
+        {showLogo && <CareHamHomeButton size="md" />}
       </div>
 
       {title && (

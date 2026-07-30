@@ -1,12 +1,12 @@
 "use client";
 
-import { TreePine } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ChildButton from "@/components/common/ChildButton";
 import LogoutButton from "@/components/common/LogoutButton";
 import PageHeader from "@/components/common/PageHeader";
 import TabletShell from "@/components/common/TabletShell";
+import CareHam from "@/components/mascot/CareHam";
 import { UI_TEXT } from "@/lib/constants/ui-text";
 import { readContributions } from "@/lib/mock/weekly-canvas";
 import type { WeeklyCanvas } from "@/types/room";
@@ -55,7 +55,7 @@ export default function GalleryPage() {
           <p className="text-lg font-bold text-text-secondary">{UI_TEXT.common.loading}</p>
         ) : entries.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-            <TreePine aria-hidden="true" size={56} className="text-primary-blue-light" />
+            <CareHam type="SMILE" size="MEDIUM" />
             <p className="text-xl font-bold text-text-secondary">{UI_TEXT.gallery.empty}</p>
             <ChildButton variant="primary" size="medium" onClick={() => router.push("/home")}>
               {UI_TEXT.gallery.backHome}
@@ -70,7 +70,7 @@ export default function GalleryPage() {
                 onClick={() => router.push(`/result/${canvas.id}`)}
                 className="flex flex-col items-center gap-2 rounded-[24px] bg-white p-6 text-center shadow-soft"
               >
-                <TreePine aria-hidden="true" size={40} className="text-primary-blue" />
+                <CareHam type="TOGETHER" size="SMALL" />
                 <span className="font-extrabold text-text-primary">{UI_TEXT.weeklyTheme.eyebrow}</span>
                 <span className="text-sm font-semibold text-text-secondary">{sharedCount}명이 함께 만들고 있어요</span>
               </button>

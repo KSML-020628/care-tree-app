@@ -1,6 +1,5 @@
 "use client";
 
-import { TreePine } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import RegistrationDisplay from "@/components/auth/RegistrationDisplay";
@@ -71,8 +70,8 @@ export default function LoginPage() {
     <TabletShell background="sky">
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-10 py-6">
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] bg-white text-primary-blue shadow-soft">
-            <TreePine aria-hidden="true" size={44} />
+          <div className="flex h-20 w-20 items-center justify-center rounded-[28px] bg-white shadow-soft">
+            <CareHam type="GUIDE" size="SMALL" />
           </div>
           <h1 className="text-3xl font-extrabold text-text-primary">{UI_TEXT.common.serviceName}</h1>
         </div>

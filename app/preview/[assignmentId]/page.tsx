@@ -81,6 +81,7 @@ export default function PreviewPage() {
   const hasSubmittedRef = useRef(false);
   const [isSending, setIsSending] = useState(false);
   const [lineArtSrc, setLineArtSrc] = useState<string | null>(null);
+  const [transparentLineArtSrc, setTransparentLineArtSrc] = useState<string | null>(null);
   const [compositeSrc, setCompositeSrc] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("preview");
   const [celebration, setCelebration] = useState<{ praise: string; seedsBefore: number; seedsAfter: number } | null>(
@@ -124,6 +125,12 @@ export default function PreviewPage() {
     if (!user || !theme || !assignment || assignment.id !== params.assignmentId) return;
     cropQuadrantLineArt(theme.fullImagePath, assignment.quadrant).then(setLineArtSrc);
   }, [user, theme, assignment, params.assignmentId]);
+
+  // 보상 화면의 공동 작품 미리보기 카드에 쓸, 전체 도안의 선화(투명 배경)를 미리 만들어 둔다.
+  useEffect(() => {
+    if (!theme) return;
+    createTransparentLineArt(theme.fullImagePath).then(setTransparentLineArtSrc);
+  }, [theme]);
 
   // 그림판을 화면에 보이지 않게 렌더링한 뒤, 그걸 내보내서 전체 그림 위 내 자리에 합쳐 보여준다.
   useEffect(() => {
@@ -236,15 +243,14 @@ export default function PreviewPage() {
         celebration && (
           <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-6">
             <SubmissionCelebration
-              pieceImageSrc={compositeSrc ?? ""}
+              weeklyCanvasId={assignment.roomId}
+              transparentLineArtSrc={transparentLineArtSrc}
+              userQuadrant={assignment.quadrant}
               praiseMessage={celebration.praise}
               totalSeedsBefore={celebration.seedsBefore}
               totalSeedsAfter={celebration.seedsAfter}
-              onFinished={goToSharedCanvas}
+              onViewSharedCanvas={goToSharedCanvas}
             />
-            <ChildButton variant="ghost" size="medium" onClick={goToSharedCanvas}>
-              {UI_TEXT.submit.cta}
-            </ChildButton>
           </div>
         )
       )}
