@@ -1,6 +1,7 @@
 "use client";
 
-import { useAiStore } from "@/lib/store/ai-store";
+import { isAnalysisDisplayable } from "@/lib/ai/artwork-analysis-display";
+import { useHydratedAnalyses } from "@/lib/store/ai-store";
 import type { DrawingContribution } from "@/types/room";
 import ArtworkMotion from "./ArtworkMotion";
 
@@ -10,14 +11,16 @@ interface ContributionGalleryProps {
 
 /** 지금까지 공유된 사분면들을 카드 형태로 보여준다. AI 캡션이 있으면 카드 아래에 함께 보여준다. */
 export default function ContributionGallery({ contributions }: ContributionGalleryProps) {
-  const analyses = useAiStore((state) => state.analyses);
+  const analyses = useHydratedAnalyses(contributions.map((item) => item.id));
 
   if (contributions.length === 0) return null;
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
       {contributions.map((contribution) => {
-        const analysis = analyses[contribution.id]?.analysis;
+        const response = analyses[contribution.id];
+        // 확신이 낮거나 검토가 필요한 AI 결과는 아이 화면에 보여주지 않고 기본 상태로 둔다.
+        const analysis = isAnalysisDisplayable(response) ? response?.analysis : undefined;
         const imageSrc = contribution.thumbnail ?? contribution.imageDataUrl;
         return (
           <div key={contribution.id} className="overflow-hidden rounded-2xl bg-white p-3 shadow-soft">

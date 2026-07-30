@@ -6,10 +6,15 @@ import ChildButton from "@/components/common/ChildButton";
 import PageHeader from "@/components/common/PageHeader";
 import TabletShell from "@/components/common/TabletShell";
 import SharedCanvasPreview from "@/components/artwork/SharedCanvasPreview";
+import CareHamReaction from "@/components/mascot/CareHamReaction";
+import { isAnalysisDisplayable } from "@/lib/ai/artwork-analysis-display";
 import { UI_TEXT } from "@/lib/constants/ui-text";
 import { createTransparentLineArt } from "@/lib/drawing/quadrant-crop";
+import { getRandomPraise } from "@/lib/mascot/praise-messages";
 import { readContributions, readWeeklyCanvas } from "@/lib/mock/weekly-canvas";
+import { useHydratedAnalyses } from "@/lib/store/ai-store";
 import { useSessionStore } from "@/lib/store/session-store";
+import { STORAGE_KEYS, readJson, writeJson } from "@/lib/storage/local-storage";
 import type { DrawingContribution, WeeklyCanvas } from "@/types/room";
 
 /**
@@ -28,6 +33,11 @@ export default function SharedCanvasPage() {
   const [canvas, setCanvas] = useState<WeeklyCanvas | null>(null);
   const [contributions, setContributions] = useState<DrawingContribution[]>([]);
   const [transparentLineArtSrc, setTransparentLineArtSrc] = useState<string | null>(null);
+  const [aiPraiseMessage, setAiPraiseMessage] = useState<string | null>(null);
+
+  // 내가 실제로 제출한 조각(placeholder 아님)을 찾는다. AI 후속 칭찬은 이 조각의 분석 결과만 본다.
+  const myContribution = contributions.find((item) => item.quadrant === assignment?.quadrant && !item.isPlaceholder);
+  const analyses = useHydratedAnalyses(myContribution ? [myContribution.id] : []);
 
   useEffect(() => {
     if (hydrated && !user) router.replace("/login");
@@ -45,6 +55,23 @@ export default function SharedCanvasPage() {
     createTransparentLineArt(theme.fullImagePath).then(setTransparentLineArtSrc);
   }, [theme]);
 
+  // AI 분석이 끝나고, 색깔에 관해 알려줄 만한 게 있으면(SUBMISSION 말고 다른 카테고리라면)
+  // 딱 한 번만 짧게 후속 칭찬을 보여준다. AI가 문장을 직접 만드는 게 아니라, AI가 고른
+  // 카테고리에 맞는 사전 검수된 문장만 사용한다.
+  useEffect(() => {
+    if (!myContribution) return;
+    const response = analyses[myContribution.id];
+    if (!response || !isAnalysisDisplayable(response)) return;
+    const { praiseCategory } = response.analysis;
+    if (praiseCategory === "SUBMISSION") return;
+
+    const shownKey = STORAGE_KEYS.aiPraiseShown(myContribution.id);
+    if (readJson<boolean>(shownKey)) return;
+    writeJson(shownKey, true);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage 플래그를 확인한 뒤에만 한 번 켠다
+    setAiPraiseMessage(getRandomPraise(praiseCategory));
+  }, [analyses, myContribution]);
+
   if (!canvas || !theme || !assignment) {
     return (
       <TabletShell background="sky">
@@ -58,6 +85,19 @@ export default function SharedCanvasPage() {
   return (
     <TabletShell background="sky">
       <PageHeader title={UI_TEXT.sharedCanvas.heading} />
+
+      {aiPraiseMessage && (
+        <div className="pointer-events-none absolute right-4 top-20 z-10">
+          <CareHamReaction
+            type="SMILE"
+            size="SMALL"
+            reaction="BOUNCE"
+            message={aiPraiseMessage}
+            autoHideMs={3000}
+            onHide={() => setAiPraiseMessage(null)}
+          />
+        </div>
+      )}
 
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-8 pb-8">
         <SharedCanvasPreview
@@ -80,7 +120,7 @@ export default function SharedCanvasPage() {
             <ChildButton variant="ghost" size="medium" onClick={() => router.push(`/draw/${assignment.id}`)}>
               {UI_TEXT.sharedCanvas.viewMine}
             </ChildButton>
-            <ChildButton variant="ghost" size="medium" onClick={() => router.push("/")}>
+            <ChildButton variant="ghost" size="medium" onClick={() => router.push("/home")}>
               {UI_TEXT.sharedCanvas.home}
             </ChildButton>
           </div>

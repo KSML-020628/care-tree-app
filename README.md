@@ -41,10 +41,14 @@ cp .env.example .env.local
 
 ```
 OPENAI_API_KEY=              # 서버 전용. 절대 NEXT_PUBLIC_ 접두어를 붙이지 않는다
-OPENAI_ARTWORK_MODEL=gpt-5-mini
+OPENAI_ARTWORK_MODEL=gpt-5.4-mini
 ENABLE_AI_ANALYSIS=true      # false로 두면 항상 fallback만 사용
 NEXT_PUBLIC_ENABLE_AI_DEBUG=false  # true일 때만 /debug/ai 화면이 보인다
 ```
+
+`OPENAI_ARTWORK_MODEL`은 계정/프로젝트마다 접근 가능한 모델이 다르다. `/debug/ai`나 서버 로그에
+`403 ... does not have access to model`이 보이면, API 키로 `GET https://api.openai.com/v1/models`를
+호출해 실제로 쓸 수 있는 모델명으로 바꿔야 한다.
 
 ## 테스트용 등록번호
 
@@ -153,9 +157,8 @@ tests/                     vitest 단위 테스트
 - 그림·해바라씨·AI 분석 결과는 브라우저 localStorage에만 저장되므로 기기를 바꾸거나 브라우저
   데이터를 지우면 사라집니다. 그림이 많이 쌓이면 localStorage 용량 제한에 걸릴 수 있습니다
   (저장 실패 시 자동 재시도 + 상태 표시로 완화).
-- AI 분석은 `gpt-5-mini`(요청서 지정 모델명)를 그대로 사용하도록 구현했지만, 실제 키로
-  검증하지는 못했습니다(키가 없는 환경에서 작업). 모델이 vision 입력이나 구조화된 JSON 출력을
-  지원하지 않을 경우 매 요청이 fallback으로 처리되며, 이 경우에도 아이 경험은 전혀 끊기지
-  않습니다.
+- AI 분석은 실제 키(`gpt-5.4-mini`)로 엔드투엔드 호출까지 확인했습니다(`source: "AI"` 응답 확인).
+  키가 접근 가능한 모델이 vision 입력이나 구조화된 JSON 출력을 지원하지 않으면 매 요청이
+  fallback으로 처리되며, 이 경우에도 아이 경험은 전혀 끊기지 않습니다.
 - 4분할 원본 도안(`public/images/themes/tree/full.png`)의 십자선이 정확히 중앙(512, 512)에 있다는
   가정으로 각 조각을 잘라냅니다. 실제 배포용 도안 교체 시 이 가정을 다시 확인해야 합니다.

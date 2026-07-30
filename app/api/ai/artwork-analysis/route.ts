@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { artworkAnalysisRequestSchema } from "@/lib/ai/artwork-analysis.schema";
 import { buildFallbackResponse } from "@/lib/ai/fallback-artwork-analysis";
 import { QUADRANT_ZONE_LABELS } from "@/lib/config/quadrants";
+import { getAllowedMotionPresets } from "@/lib/config/theme-motion-presets";
 import { WEEKLY_THEMES } from "@/lib/config/themes";
 
 export const runtime = "nodejs";
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(buildFallbackResponse());
   }
 
-  const { imageDataUrl, themeId, themeTitle, quadrant, allowedMotionPresets } = parsed.data;
+  const { imageDataUrl, themeId, themeTitle, quadrant } = parsed.data;
 
   const mime = imageDataUrl.match(/^data:([^;]+);base64,/)?.[1];
   if (!mime || !ALLOWED_IMAGE_MIME.includes(mime)) {
@@ -58,7 +59,8 @@ export async function POST(request: NextRequest) {
       quadrant,
       // 클라이언트가 보낸 자유 텍스트 대신, 서버가 아는 고정 표현만 프롬프트에 넣는다.
       zoneLabel: QUADRANT_ZONE_LABELS[quadrant],
-      allowedMotionPresets,
+      // 클라이언트가 보낸 허용 목록도 신뢰하지 않고, 서버가 themeId+quadrant로 직접 정한다.
+      allowedMotionPresets: getAllowedMotionPresets(themeId, quadrant),
     });
     return NextResponse.json(result);
   } catch (error) {

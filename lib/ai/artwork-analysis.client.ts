@@ -40,7 +40,7 @@ export async function requestArtworkAnalysisFromOpenAI(input: ArtworkAnalysisInp
     const completion = await client.chat.completions.create(
       {
         model,
-        max_tokens: 400,
+        max_completion_tokens: 400,
         messages: [
           { role: "system", content: ARTWORK_ANALYSIS_SYSTEM_PROMPT },
           {

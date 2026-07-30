@@ -11,8 +11,10 @@ export function buildFallbackAnalysis(): ArtworkAnalysis {
     motionPreset: "SPARKLE",
     praiseCategory: "SUBMISSION",
     caption: "친구들의 색깔이 모인 특별한 작품이에요.",
+    // confidence 0은 "AI가 실제로 점수 매기지 않았다"는 뜻이라 reviewRequired도 true로 둔다.
+    // (아이 화면에는 영향 없다 — FALLBACK은 isAnalysisDisplayable()에서 이 값과 무관하게 항상 그대로 보여준다.)
     confidence: 0,
-    reviewRequired: false,
+    reviewRequired: true,
   };
 }
 

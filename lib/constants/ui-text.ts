@@ -15,6 +15,9 @@ export const UI_TEXT = {
     confirmNo: "아니요",
     orientationTitle: "태블릿을 옆으로 돌려주세요",
     orientationBody: "이 화면은 눕혀서 봐야 더 예뻐요!",
+    logout: "로그아웃",
+    logoutConfirmTitle: "로그아웃 할까요?",
+    logoutConfirmBody: "다음에 들어올 때 팔찌 번호를 다시 눌러야 해요.",
   },
   login: {
     title: "팔찌에 적힌 번호를 눌러주세요",
@@ -89,6 +92,14 @@ export const UI_TEXT = {
     heading: "작품 보관함",
     empty: "아직 모인 작품이 없어요",
     backHome: "처음으로",
+  },
+  home: {
+    greeting: "케어햄 스케치북에 다시 왔구나!",
+    subtitle: "오늘은 뭐 할까?",
+    startWeeklyCta: "이번 주 그림 색칠하기",
+    continueCta: "색칠 이어하기",
+    viewSharedCta: "우리 그림 보기",
+    galleryCta: "작품 보관함",
   },
   seeds: {
     jarLabel: "해바라씨 항아리",

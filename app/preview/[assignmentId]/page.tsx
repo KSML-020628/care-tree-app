@@ -9,9 +9,9 @@ import TabletShell from "@/components/common/TabletShell";
 import DrawingCanvas, { type DrawingCanvasHandle } from "@/components/drawing/DrawingCanvas";
 import SubmissionCelebration from "@/components/reward/SubmissionCelebration";
 import { UI_TEXT } from "@/lib/constants/ui-text";
-import type { MotionPreset } from "@/lib/ai/artwork-analysis.types";
 import { QUADRANT_ZONE_LABELS } from "@/lib/config/quadrants";
 import { compositeFinalArtwork } from "@/lib/drawing/canvas-export";
+import { exportAnalysisImage } from "@/lib/drawing/export-analysis-image";
 import { createTransparentLineArt, cropQuadrantLineArt } from "@/lib/drawing/quadrant-crop";
 import { getRandomPraise } from "@/lib/mascot/praise-messages";
 import { fetchActiveTheme } from "@/lib/mock/theme";
@@ -25,11 +25,14 @@ import type { DrawingContribution } from "@/types/room";
 
 type Phase = "preview" | "celebrating";
 
-const ALL_MOTION_PRESETS: MotionPreset[] = ["GENTLE_SWAY", "SOFT_BOUNCE", "SPARKLE", "FLOAT", "FADE_IN", "NONE"];
-
-/** AI 실패가 제출 흐름을 막지 않도록, 그림 저장이 끝난 뒤 완전히 분리된 흐름으로 백그라운드에서만 호출한다. */
+/**
+ * AI 실패가 제출 흐름을 막지 않도록, 그림 저장이 끝난 뒤 완전히 분리된 흐름으로 백그라운드에서만 호출한다.
+ * contribution.imageDataUrl(색칠 레이어만, 선화 없음)을 그대로 보내면 AI가 무엇을 그렸는지 알아보기 어려우므로,
+ * 선화까지 합쳐서 만든 analysisImageDataUrl을 대신 보낸다.
+ */
 async function runArtworkAnalysisInBackground(
   contribution: DrawingContribution,
+  analysisImageDataUrl: string,
   themeId: string,
   themeTitle: string,
 ): Promise<void> {
@@ -38,12 +41,12 @@ async function runArtworkAnalysisInBackground(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        imageDataUrl: contribution.imageDataUrl,
+        imageDataUrl: analysisImageDataUrl,
         themeId,
         themeTitle,
         quadrant: contribution.quadrant,
         zoneLabel: QUADRANT_ZONE_LABELS[contribution.quadrant],
-        allowedMotionPresets: ALL_MOTION_PRESETS,
+        // allowedMotionPresets는 보내지 않는다 — 서버가 themeId+quadrant로 직접 정한다(클라이언트 값은 신뢰하지 않음).
       }),
     });
     if (!response.ok) return;
@@ -73,6 +76,10 @@ export default function PreviewPage() {
   const grantSeeds = useRewardStore((state) => state.grantSeeds);
 
   const canvasRef = useRef<DrawingCanvasHandle>(null);
+  // 빠르게 두 번 눌러도 제출·해바라씨·AI 요청이 중복되지 않도록, 리렌더링을 기다리지 않는
+  // ref로 막는다(state는 다음 렌더 전까지 반영이 늦어질 수 있어 연타를 놓칠 수 있다).
+  const hasSubmittedRef = useRef(false);
+  const [isSending, setIsSending] = useState(false);
   const [lineArtSrc, setLineArtSrc] = useState<string | null>(null);
   const [compositeSrc, setCompositeSrc] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("preview");
@@ -133,6 +140,9 @@ export default function PreviewPage() {
 
   function handleSend() {
     if (!user || !theme || !assignment || !canvasRef.current) return;
+    if (hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
+    setIsSending(true);
 
     const exported = canvasRef.current.exportDrawingLayer();
 
@@ -152,7 +162,15 @@ export default function PreviewPage() {
     setPhase("celebrating");
 
     // 4) AI 분석은 완전히 분리된 백그라운드 요청으로만 실행한다.
-    void runArtworkAnalysisInBackground(contribution, theme.id, theme.title);
+    //    선화가 없으면 AI가 무엇을 그렸는지 알아보기 어려우므로, 색칠 레이어 + 선화를 합친
+    //    이미지를 별도로 만들어서 보낸다(공동 작품에 저장되는 contribution.imageDataUrl은 그대로 둔다).
+    if (lineArtSrc) {
+      void exportAnalysisImage({ drawingLayerDataUrl: exported, lineArtDataUrl: lineArtSrc })
+        .then((analysisImage) => runArtworkAnalysisInBackground(contribution, analysisImage, theme.id, theme.title))
+        .catch(() => {
+          // 합성이 실패해도 조용히 무시한다. 이미 그림 제출·해바라씨·칭찬은 끝난 뒤라 영향이 없다.
+        });
+    }
   }
 
   function goToSharedCanvas() {
@@ -201,10 +219,15 @@ export default function PreviewPage() {
           </div>
 
           <div className="grid w-full max-w-md grid-cols-2 gap-4">
-            <ChildButton variant="ghost" size="large" onClick={() => router.push(`/draw/${assignment.id}`)}>
+            <ChildButton
+              variant="ghost"
+              size="large"
+              disabled={isSending}
+              onClick={() => router.push(`/draw/${assignment.id}`)}
+            >
               {UI_TEXT.preview.keepDrawing}
             </ChildButton>
-            <ChildButton variant="accent" size="large" icon={Send} onClick={handleSend}>
+            <ChildButton variant="accent" size="large" icon={Send} disabled={isSending} onClick={handleSend}>
               {UI_TEXT.preview.sendIt}
             </ChildButton>
           </div>

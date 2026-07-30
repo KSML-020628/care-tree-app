@@ -12,10 +12,15 @@ function pickRandomQuadrant(exclude: readonly Quadrant[]): Quadrant {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-/** 이미 우리 그림에 공유된(=다른 아이가 맡은) 사분면은 새 배정에서 제외한다. */
+/**
+ * 이미 우리 그림에 공유된(=다른 아이가 맡은) 사분면은 새 배정에서 제외한다.
+ * placeholder(아직 아무도 채우지 않아 미리 넣어둔 케어햄 색칠본)는 실제 참여가 아니므로 제외 대상에서 뺀다.
+ * placeholder까지 "이미 찬 자리"로 세면, 두 번째 아이부터는 배정 가능한 자리가 하나도 안 남았다고
+ * 잘못 판단해 중복 배정이 일어날 수 있다.
+ */
 function collectTakenQuadrants(weeklyCanvasId: string): Quadrant[] {
   return readContributions(weeklyCanvasId)
-    .filter((contribution) => contribution.status === "SHARED")
+    .filter((contribution) => contribution.status === "SHARED" && !contribution.isPlaceholder)
     .map((contribution) => contribution.quadrant);
 }
 

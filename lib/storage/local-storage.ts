@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   unlockedCareHams: (participantId: string) => `${NAMESPACE}:unlocked-care-hams:${participantId}`,
   artworkAnalysis: (contributionId: string) => `${NAMESPACE}:artwork-analysis:${contributionId}`,
   autosaveMascotShown: (assignmentId: string) => `${NAMESPACE}:autosave-mascot-shown:${assignmentId}`,
+  aiPraiseShown: (contributionId: string) => `${NAMESPACE}:ai-praise-shown:${contributionId}`,
 } as const;
 
 function isStorageAvailable(): boolean {

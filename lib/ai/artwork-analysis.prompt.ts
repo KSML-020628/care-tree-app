@@ -35,7 +35,7 @@ export function buildArtworkAnalysisUserPrompt(
 motionPreset은 다음 중 하나만 선택하세요: ${input.allowedMotionPresets.join(", ")}
 praiseCategory는 다음 중 하나만 선택하세요: SUBMISSION, COLORFUL, WARM_COLOR, COOL_COLOR
 
-첨부된 이미지는 아이가 색칠한 그림 조각입니다.
+첨부된 이미지는 원래 선 그림(사물의 윤곽) 위에 아이가 색칠을 더한 그림 조각입니다.
 이 그림에서 실제로 보이는 사물과 색상만 근거로, 지정된 JSON 스키마에 맞춰 응답하세요.
 `.trim();
 }

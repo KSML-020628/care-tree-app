@@ -4,6 +4,7 @@ import { TreePine } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ChildButton from "@/components/common/ChildButton";
+import LogoutButton from "@/components/common/LogoutButton";
 import PageHeader from "@/components/common/PageHeader";
 import TabletShell from "@/components/common/TabletShell";
 import { UI_TEXT } from "@/lib/constants/ui-text";
@@ -47,7 +48,7 @@ export default function GalleryPage() {
 
   return (
     <TabletShell>
-      <PageHeader onBack={() => router.back()} title={UI_TEXT.gallery.heading} />
+      <PageHeader onBack={() => router.back()} title={UI_TEXT.gallery.heading} rightSlot={<LogoutButton />} />
 
       <div className="flex flex-1 flex-col items-center gap-6 overflow-y-auto px-8 py-6">
         {!entries ? (
@@ -56,7 +57,7 @@ export default function GalleryPage() {
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <TreePine aria-hidden="true" size={56} className="text-primary-blue-light" />
             <p className="text-xl font-bold text-text-secondary">{UI_TEXT.gallery.empty}</p>
-            <ChildButton variant="primary" size="medium" onClick={() => router.push("/")}>
+            <ChildButton variant="primary" size="medium" onClick={() => router.push("/home")}>
               {UI_TEXT.gallery.backHome}
             </ChildButton>
           </div>

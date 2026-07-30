@@ -82,6 +82,9 @@ export default function ResultPage() {
     if (item.imageDataUrl) acc[item.quadrant] = item.imageDataUrl;
     return acc;
   }, {});
+  // "함께한 화가" 수는 실제로 참여한 아이만 센다. placeholder(아직 안 채워진 자리를 채운 케어햄
+  // 색칠본)까지 세면, 실제로는 한 명뿐인데 여러 명이 참여한 것처럼 보일 수 있다.
+  const realParticipantCount = sharedContributions.filter((item) => !item.isPlaceholder).length;
 
   return (
     <TabletShell background="sky">
@@ -106,7 +109,7 @@ export default function ResultPage() {
             <dl className="grid w-full max-w-md grid-cols-2 gap-3 rounded-[24px] bg-white/90 p-5 text-sm shadow-soft">
               <div>
                 <dt className="font-semibold text-text-secondary">{UI_TEXT.result.participants}</dt>
-                <dd className="text-lg font-extrabold text-text-primary">{sharedContributions.length}명</dd>
+                <dd className="text-lg font-extrabold text-text-primary">{realParticipantCount}명</dd>
               </div>
               <div>
                 <dt className="font-semibold text-text-secondary">{UI_TEXT.result.theme}</dt>
@@ -130,7 +133,7 @@ export default function ResultPage() {
                 <ChildButton variant="ghost" size="medium" icon={Archive} onClick={() => router.push("/gallery")}>
                   {UI_TEXT.result.gallery}
                 </ChildButton>
-                <ChildButton variant="ghost" size="medium" onClick={() => router.push("/")}>
+                <ChildButton variant="ghost" size="medium" onClick={() => router.push("/home")}>
                   {UI_TEXT.result.nextWeek}
                 </ChildButton>
               </div>
