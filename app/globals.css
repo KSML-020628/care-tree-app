@@ -1,26 +1,160 @@
 @import "tailwindcss";
+@import "pretendard/dist/web/static/pretendard.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-primary-blue: #536dfe;
+  --color-primary-blue-dark: #3854d8;
+  --color-primary-blue-light: #8ea2ff;
+  --color-accent-yellow: #ffd84d;
+  --color-accent-yellow-dark: #f4be24;
+  --color-background: #f5f8ff;
+  --color-surface: #ffffff;
+  --color-text-primary: #24325a;
+  --color-text-secondary: #61709a;
+  --color-success: #63c98d;
+  --color-warm: #ff8a65;
+
+  --radius-card: 28px;
+  --radius-button: 24px;
+
+  --shadow-soft: 0 10px 30px rgba(83, 109, 254, 0.14);
+  --shadow-button: 0 6px 0 rgba(0, 0, 0, 0.12);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary-blue: var(--color-primary-blue);
+  --color-primary-blue-dark: var(--color-primary-blue-dark);
+  --color-primary-blue-light: var(--color-primary-blue-light);
+  --color-accent-yellow: var(--color-accent-yellow);
+  --color-accent-yellow-dark: var(--color-accent-yellow-dark);
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-success: var(--color-success);
+  --color-warm: var(--color-warm);
+  --shadow-soft: var(--shadow-soft);
+  --shadow-button: var(--shadow-button);
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "Malgun Gothic", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+button {
+  font-family: inherit;
+  touch-action: manipulation;
+}
+
+/* 그림판 영역에서만 스크롤/확대를 막는다. 다른 화면은 정상적으로 스크롤된다. */
+.no-touch-scroll {
+  touch-action: none;
+}
+
+@keyframes float-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(10px, -16px);
+  }
+}
+
+@keyframes theme-intro-fade {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes gentle-pop {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes sparkle-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes piece-fly-in {
+  0% {
+    transform: translate(var(--fly-x, 0), var(--fly-y, 0)) scale(0.82);
+    opacity: 0;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes glow-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 216, 77, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(255, 216, 77, 0);
+  }
+}
+
+@keyframes bounce-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
