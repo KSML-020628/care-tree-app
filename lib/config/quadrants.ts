@@ -56,3 +56,14 @@ export function getQuadrantPercentRect(quadrant: Quadrant): QuadrantPercentRect 
     height: `${(rect.height / FULL_IMAGE_SIZE) * 100}%`,
   };
 }
+
+/**
+ * 사분면의 사람이 읽을 수 있는 위치 설명. AI 분석 요청에 넣는 zoneLabel은 항상 이 표에서만
+ * 가져오고 클라이언트가 보낸 자유 텍스트를 그대로 쓰지 않는다(프롬프트 주입 방지).
+ */
+export const QUADRANT_ZONE_LABELS: Record<Quadrant, string> = {
+  TOP_LEFT: "그림 왼쪽 위",
+  TOP_RIGHT: "그림 오른쪽 위",
+  BOTTOM_LEFT: "그림 왼쪽 아래",
+  BOTTOM_RIGHT: "그림 오른쪽 아래",
+};

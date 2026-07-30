@@ -61,9 +61,7 @@ export default function AssignmentPage() {
     <TabletShell background="sky">
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-8">
         <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-text-primary">
-            {UI_TEXT.assignment.heading(user.nickname)}
-          </h1>
+          <h1 className="text-3xl font-extrabold text-text-primary">{UI_TEXT.assignment.heading}</h1>
           <p className="mt-2 text-lg font-semibold text-text-secondary">{UI_TEXT.assignment.subtitle}</p>
         </div>
 

@@ -5,9 +5,13 @@ const NAMESPACE = "care-tree";
 export const STORAGE_KEYS = {
   session: `${NAMESPACE}:session`,
   assignment: (userId: string, themeId: string) => `${NAMESPACE}:assignment:${themeId}:${userId}`,
-  room: (roomId: string) => `${NAMESPACE}:room:${roomId}`,
+  weeklyCanvas: (weeklyCanvasId: string) => `${NAMESPACE}:weekly-canvas:${weeklyCanvasId}`,
+  contributions: (weeklyCanvasId: string) => `${NAMESPACE}:contributions:${weeklyCanvasId}`,
   drawing: (assignmentId: string) => `${NAMESPACE}:drawing:${assignmentId}`,
-  submissions: (roomId: string) => `${NAMESPACE}:submissions:${roomId}`,
+  seedLedger: (participantId: string) => `${NAMESPACE}:seed-ledger:${participantId}`,
+  unlockedCareHams: (participantId: string) => `${NAMESPACE}:unlocked-care-hams:${participantId}`,
+  artworkAnalysis: (contributionId: string) => `${NAMESPACE}:artwork-analysis:${contributionId}`,
+  autosaveMascotShown: (assignmentId: string) => `${NAMESPACE}:autosave-mascot-shown:${assignmentId}`,
 } as const;
 
 function isStorageAvailable(): boolean {

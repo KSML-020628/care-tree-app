@@ -7,13 +7,16 @@ import RegistrationDisplay from "@/components/auth/RegistrationDisplay";
 import RegistrationKeypad from "@/components/auth/RegistrationKeypad";
 import ChildButton from "@/components/common/ChildButton";
 import TabletShell from "@/components/common/TabletShell";
+import CareHam from "@/components/mascot/CareHam";
+import CareHamSpeechBubble from "@/components/mascot/CareHamSpeechBubble";
 import { UI_TEXT } from "@/lib/constants/ui-text";
 import { verifyRegistrationNumber } from "@/lib/mock/users";
 import { useSessionStore } from "@/lib/store/session-store";
 
 const REGISTRATION_LENGTH = 6;
+const WELCOME_DELAY_MS = 1100;
 
-type Status = "idle" | "checking" | "error";
+type Status = "idle" | "checking" | "error" | "welcome";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -49,7 +52,19 @@ export default function LoginPage() {
       return;
     }
     login(user);
-    router.push("/weekly-theme");
+    setStatus("welcome");
+    window.setTimeout(() => router.push("/weekly-theme"), WELCOME_DELAY_MS);
+  }
+
+  if (status === "welcome") {
+    return (
+      <TabletShell background="sky">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-10 py-6 [animation:gentle-pop_400ms_ease-out]">
+          <CareHamSpeechBubble tone="accent">반가워! 같이 색칠하러 가자!</CareHamSpeechBubble>
+          <CareHam type="GUIDE" size="LARGE" reaction="WAVE" />
+        </div>
+      </TabletShell>
+    );
   }
 
   return (

@@ -10,10 +10,11 @@ import ColorPalette from "@/components/drawing/ColorPalette";
 import DrawingBottomBar from "@/components/drawing/DrawingBottomBar";
 import DrawingCanvas, { type DrawingCanvasHandle } from "@/components/drawing/DrawingCanvas";
 import ToolPalette from "@/components/drawing/ToolPalette";
-import { QUADRANT_GRID_ORDER } from "@/lib/config/quadrants";
+import CareHamReaction from "@/components/mascot/CareHamReaction";
 import { UI_TEXT } from "@/lib/constants/ui-text";
 import { cropQuadrantLineArt } from "@/lib/drawing/quadrant-crop";
 import { fetchActiveTheme } from "@/lib/mock/theme";
+import { STORAGE_KEYS, readJson, writeJson } from "@/lib/storage/local-storage";
 import { useDrawingStore } from "@/lib/store/drawing-store";
 import { useSessionStore } from "@/lib/store/session-store";
 import { getOrCreateAssignment, updateAssignmentStatus } from "@/lib/utils/random-assignment";
@@ -45,6 +46,8 @@ export default function DrawPage() {
 
   const [lineArtSrc, setLineArtSrc] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showGuideGreeting, setShowGuideGreeting] = useState(false);
+  const [showAutosaveSmile, setShowAutosaveSmile] = useState(false);
   const canvasRef = useRef<DrawingCanvasHandle>(null);
 
   // 로그인 정보를 확인하고, 없으면 알맞은 이전 화면으로 되돌린다.
@@ -77,16 +80,29 @@ export default function DrawPage() {
     };
   }, [theme, assignment]);
 
-  // 이 조각에 저장된 그림을 불러오고, 상태를 "색칠 중"으로 바꾼다.
+  // 이 조각에 저장된 그림을 불러오고, 상태를 "색칠 중"으로 바꾼다. 처음 들어온 순간에만 안내 햄이 짧게 인사한다.
   useEffect(() => {
     if (!user || !theme || !assignment) return;
     loadForAssignment(assignment.id);
     if (assignment.status === "ASSIGNED") {
       const updated = updateAssignmentStatus(user.id, theme.id, "DRAWING");
       if (updated) setAssignment(updated);
+      // 이 조각에 처음 들어온 순간에만 안내 햄이 인사하도록, 상태 전환을 감지한 여기서만 켠다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 화면 진입(최초 1회) 감지는 effect 밖에서 계산할 수 없다
+      setShowGuideGreeting(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignment?.id]);
+
+  // 자동 저장이 처음 성공했을 때만(이 조각에서 평생 한 번만) 웃음 햄이 아주 짧게 나타난다.
+  useEffect(() => {
+    if (saveStatus !== "saved" || !assignment) return;
+    const key = STORAGE_KEYS.autosaveMascotShown(assignment.id);
+    if (readJson<boolean>(key)) return;
+    writeJson(key, true);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage 플래그를 확인한 뒤에만 한 번 켠다
+    setShowAutosaveSmile(true);
+  }, [saveStatus, assignment]);
 
   // 저장 중이거나 저장이 막 실패했을 때만, 창을 닫기 전에 한 번 더 확인한다.
   useEffect(() => {
@@ -112,8 +128,6 @@ export default function DrawPage() {
     router.push(`/preview/${assignment.id}`);
   }
 
-  const pieceIndex = assignment ? QUADRANT_GRID_ORDER.indexOf(assignment.quadrant) + 1 : 1;
-
   if (!user || !theme || !assignment || !lineArtSrc) {
     return (
       <TabletShell>
@@ -131,20 +145,41 @@ export default function DrawPage() {
         title={UI_TEXT.drawing.themeLabel}
         subtitle={UI_TEXT.drawing.collabNote}
         rightSlot={
-          <>
-            <span className="rounded-full bg-primary-blue-light/30 px-3 py-1 text-sm font-extrabold text-primary-blue">
-              {pieceIndex} / {QUADRANT_GRID_ORDER.length}
-            </span>
-            <button
-              type="button"
-              aria-label={UI_TEXT.common.help}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F0F3FF] text-text-secondary"
-            >
-              <HelpCircle aria-hidden="true" size={22} />
-            </button>
-          </>
+          <button
+            type="button"
+            aria-label={UI_TEXT.common.help}
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F0F3FF] text-text-secondary"
+          >
+            <HelpCircle aria-hidden="true" size={22} />
+          </button>
         }
       />
+
+      {showGuideGreeting && (
+        <div className="pointer-events-none absolute left-4 top-20 z-10">
+          <CareHamReaction
+            type="GUIDE"
+            size="SMALL"
+            reaction="WAVE"
+            message="네가 맡은 곳을 색칠해 볼까?"
+            autoHideMs={3000}
+            onHide={() => setShowGuideGreeting(false)}
+          />
+        </div>
+      )}
+
+      {showAutosaveSmile && (
+        <div className="pointer-events-none absolute right-4 top-20 z-10">
+          <CareHamReaction
+            type="SMILE"
+            size="SMALL"
+            reaction="BOUNCE"
+            message={UI_TEXT.drawing.autoSaved}
+            autoHideMs={2400}
+            onHide={() => setShowAutosaveSmile(false)}
+          />
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1 gap-4 px-4 pb-4">
         <ToolPalette tool={tool} onToolChange={setTool} brushSize={brushSize} onBrushSizeChange={setBrushSize} />

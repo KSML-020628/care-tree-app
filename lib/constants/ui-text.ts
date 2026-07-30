@@ -1,7 +1,13 @@
-/** 화면에 보이는 모든 한글 문구를 한 곳에 모아둔다. 문구 수정은 이 파일만 고치면 된다. */
+/**
+ * 화면에 보이는 모든 한글 문구를 한 곳에 모아둔다. 문구 수정은 이 파일만 고치면 된다.
+ *
+ * 안전 원칙: 순위·경쟁·마감 압박 표현을 쓰지 않는다.
+ * "친구 기다리는 중", "1/4 완료", "먼저 골랐어요", "네가 마지막이에요" 같은 문구는 넣지 않는다.
+ * 케어햄 스케치북은 비동기 공동 작품이라, 누가 언제 접속했는지·몇 명이 남았는지를 보여주지 않는다.
+ */
 export const UI_TEXT = {
   common: {
-    serviceName: "함께 그리는 우리 숲",
+    serviceName: "케어햄 스케치북",
     back: "뒤로 가기",
     help: "도움말",
     loading: "잠시만 기다려 주세요",
@@ -21,17 +27,17 @@ export const UI_TEXT = {
   },
   weeklyTheme: {
     eyebrow: "이번 주의 주제",
-    footerNote: "친구들과 함께 하나의 그림을 완성해요!",
+    footerNote: "우리 함께 하나의 그림을 만들어가요!",
     skip: "건너뛰기",
   },
   assignment: {
-    heading: (nickname: string) => `${nickname} 친구가 맡은 그림이에요!`,
+    heading: "이번 그림에서 네가 맡은 곳이야!",
     subtitle: "내가 색칠할 부분을 노란 테두리로 표시했어요",
     cta: "색칠하러 가기",
   },
   drawing: {
     themeLabel: "이번 주 주제: 나무",
-    collabNote: "친구들과 함께 색칠하고 있어요",
+    collabNote: "다른 친구들의 색깔도 함께 모이고 있어요.",
     tools: "도구",
     colors: "색깔",
     brushSize: "굵기",
@@ -59,30 +65,33 @@ export const UI_TEXT = {
     sendIt: "이대로 보낼래요",
   },
   submit: {
-    heading: "그림을 친구들에게 보냈어요!",
-    cta: "친구들의 그림 기다리기",
+    cta: "우리 그림 보러 가기",
   },
-  waitingRoom: {
-    heading: "친구들을 기다리고 있어요",
-    statusWaiting: "친구 기다리는 중",
-    statusDrawing: "색칠 중...",
-    statusSubmitted: "색칠 완료!",
-    footerCount: (count: number) => `지금 ${count}명의 친구가 함께하고 있어요`,
-    footerNote: "조금만 기다리면 그림이 완성돼요!",
+  sharedCanvas: {
+    heading: "우리 그림에 모인 색깔",
+    intro1: "내 색깔이 우리 그림에 들어갔어요.",
+    intro2: "다른 친구들의 색깔도 하나씩 더해지고 있어요.",
+    viewFull: "우리 그림 보기",
+    home: "홈으로 가기",
+    viewMine: "내 그림 다시 보기",
   },
   result: {
-    heading: "친구들과 함께 나무를 완성했어요!",
-    participants: "참여한 친구",
+    heading: "우리 그림이 더 알록달록해졌어요.",
+    participants: "함께한 화가",
     hospital: "병원",
-    date: "완성 날짜",
+    date: "오늘 날짜",
     theme: "이번 주 주제",
     viewLarge: "우리 그림 크게 보기",
     gallery: "작품 보관함",
-    nextWeek: "다음 주제 기다리기",
+    nextWeek: "다음 주에 또 만나요!",
   },
   gallery: {
     heading: "작품 보관함",
-    empty: "아직 완성된 작품이 없어요",
+    empty: "아직 모인 작품이 없어요",
     backHome: "처음으로",
+  },
+  seeds: {
+    jarLabel: "해바라씨 항아리",
+    gained: "해바라씨가 항아리에 쏙 들어갔어요!",
   },
 } as const;

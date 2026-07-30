@@ -19,7 +19,7 @@ const BACKGROUND_CLASSES: Record<NonNullable<TabletShellProps["background"]>, st
 export default function TabletShell({ children, background = "default" }: TabletShellProps) {
   return (
     <div className={`min-h-dvh w-full ${BACKGROUND_CLASSES[background]}`}>
-      <div className="hidden min-h-dvh w-full flex-col landscape:flex">{children}</div>
+      <div className="relative hidden min-h-dvh w-full flex-col landscape:flex">{children}</div>
 
       <div className="flex min-h-dvh w-full flex-col items-center justify-center gap-6 px-10 text-center landscape:hidden">
         <RotateCcw aria-hidden="true" size={64} className="text-primary-blue" />

@@ -1,23 +1,58 @@
 "use client";
 
-import { Send, Sparkles } from "lucide-react";
+import { Send } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import ChildButton from "@/components/common/ChildButton";
 import PageHeader from "@/components/common/PageHeader";
 import TabletShell from "@/components/common/TabletShell";
 import DrawingCanvas, { type DrawingCanvasHandle } from "@/components/drawing/DrawingCanvas";
+import SubmissionCelebration from "@/components/reward/SubmissionCelebration";
 import { UI_TEXT } from "@/lib/constants/ui-text";
+import type { MotionPreset } from "@/lib/ai/artwork-analysis.types";
+import { QUADRANT_ZONE_LABELS } from "@/lib/config/quadrants";
 import { compositeFinalArtwork } from "@/lib/drawing/canvas-export";
 import { createTransparentLineArt, cropQuadrantLineArt } from "@/lib/drawing/quadrant-crop";
+import { getRandomPraise } from "@/lib/mascot/praise-messages";
 import { fetchActiveTheme } from "@/lib/mock/theme";
-import { getOrCreateRoom, updateParticipantStatus } from "@/lib/mock/room";
-import { saveSubmission } from "@/lib/mock/submissions";
+import { getOrCreateWeeklyCanvas, shareContribution } from "@/lib/mock/weekly-canvas";
+import { useAiStore } from "@/lib/store/ai-store";
 import { useDrawingStore } from "@/lib/store/drawing-store";
+import { useRewardStore } from "@/lib/store/reward-store";
 import { useSessionStore } from "@/lib/store/session-store";
 import { getOrCreateAssignment, updateAssignmentStatus } from "@/lib/utils/random-assignment";
+import type { DrawingContribution } from "@/types/room";
 
-type Phase = "preview" | "submitting" | "submitted";
+type Phase = "preview" | "celebrating";
+
+const ALL_MOTION_PRESETS: MotionPreset[] = ["GENTLE_SWAY", "SOFT_BOUNCE", "SPARKLE", "FLOAT", "FADE_IN", "NONE"];
+
+/** AI 실패가 제출 흐름을 막지 않도록, 그림 저장이 끝난 뒤 완전히 분리된 흐름으로 백그라운드에서만 호출한다. */
+async function runArtworkAnalysisInBackground(
+  contribution: DrawingContribution,
+  themeId: string,
+  themeTitle: string,
+): Promise<void> {
+  try {
+    const response = await fetch("/api/ai/artwork-analysis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        imageDataUrl: contribution.imageDataUrl,
+        themeId,
+        themeTitle,
+        quadrant: contribution.quadrant,
+        zoneLabel: QUADRANT_ZONE_LABELS[contribution.quadrant],
+        allowedMotionPresets: ALL_MOTION_PRESETS,
+      }),
+    });
+    if (!response.ok) return;
+    const result = await response.json();
+    useAiStore.getState().setAnalysis(contribution.id, result);
+  } catch {
+    // 조용히 무시한다. 이미 그림 저장과 칭찬은 끝난 뒤라 아이 경험에는 영향이 없다.
+  }
+}
 
 export default function PreviewPage() {
   const params = useParams<{ assignmentId: string }>();
@@ -33,10 +68,17 @@ export default function PreviewPage() {
   const drawingAssignmentId = useDrawingStore((state) => state.assignmentId);
   const loadForAssignment = useDrawingStore((state) => state.loadForAssignment);
 
+  const totalSeeds = useRewardStore((state) => state.totalSeeds);
+  const loadRewardsForParticipant = useRewardStore((state) => state.loadForParticipant);
+  const grantSeeds = useRewardStore((state) => state.grantSeeds);
+
   const canvasRef = useRef<DrawingCanvasHandle>(null);
   const [lineArtSrc, setLineArtSrc] = useState<string | null>(null);
   const [compositeSrc, setCompositeSrc] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("preview");
+  const [celebration, setCelebration] = useState<{ praise: string; seedsBefore: number; seedsAfter: number } | null>(
+    null,
+  );
 
   // 새로고침으로 화면이 다시 열려도(로그인 정보/주제/배정/그림 상태를) 그대로 되살린다.
   useEffect(() => {
@@ -45,6 +87,7 @@ export default function PreviewPage() {
       router.replace("/login");
       return;
     }
+    loadRewardsForParticipant(user.id);
     if (!theme) {
       fetchActiveTheme().then(setTheme);
       return;
@@ -56,7 +99,19 @@ export default function PreviewPage() {
     if (drawingAssignmentId !== assignment.id) {
       loadForAssignment(assignment.id);
     }
-  }, [hydrated, user, theme, assignment, params.assignmentId, drawingAssignmentId, router, setTheme, setAssignment, loadForAssignment]);
+  }, [
+    hydrated,
+    user,
+    theme,
+    assignment,
+    params.assignmentId,
+    drawingAssignmentId,
+    router,
+    setTheme,
+    setAssignment,
+    loadForAssignment,
+    loadRewardsForParticipant,
+  ]);
 
   useEffect(() => {
     if (!user || !theme || !assignment || assignment.id !== params.assignmentId) return;
@@ -76,27 +131,33 @@ export default function PreviewPage() {
     return () => window.clearTimeout(timer);
   }, [theme, assignment, lineArtSrc, strokes]);
 
-  async function handleSend() {
+  function handleSend() {
     if (!user || !theme || !assignment || !canvasRef.current) return;
-    setPhase("submitting");
 
     const exported = canvasRef.current.exportDrawingLayer();
-    saveSubmission(assignment.roomId, {
-      id: `submission-${user.id}`,
-      assignmentId: assignment.id,
-      userId: user.id,
-      quadrant: assignment.quadrant,
-      imageDataUrl: exported,
-      submittedAt: new Date().toISOString(),
-    });
 
+    // 1) 그림을 먼저 저장하고 제출을 성공 처리한다 (AI를 전혀 기다리지 않는다).
+    const contribution = shareContribution(assignment.roomId, user, assignment.quadrant, exported);
     const updatedAssignment = updateAssignmentStatus(user.id, theme.id, "SUBMITTED");
     if (updatedAssignment) setAssignment(updatedAssignment);
+    getOrCreateWeeklyCanvas(user, updatedAssignment ?? assignment);
 
-    const room = getOrCreateRoom(user, updatedAssignment ?? assignment);
-    updateParticipantStatus(room.id, user.id, "SUBMITTED", exported);
+    // 2) 해바라씨를 지급한다.
+    const seedsBefore = totalSeeds;
+    grantSeeds("ZONE_SUBMITTED", assignment.id);
+    const seedsAfter = seedsBefore + 5;
 
-    setPhase("submitted");
+    // 3) 사전 검수된 기본 칭찬을 즉시 보여준다.
+    setCelebration({ praise: getRandomPraise("SUBMISSION"), seedsBefore, seedsAfter });
+    setPhase("celebrating");
+
+    // 4) AI 분석은 완전히 분리된 백그라운드 요청으로만 실행한다.
+    void runArtworkAnalysisInBackground(contribution, theme.id, theme.title);
+  }
+
+  function goToSharedCanvas() {
+    if (!assignment) return;
+    router.push(`/waiting-room/${assignment.roomId}`);
   }
 
   if (!user || !theme || !assignment) {
@@ -111,9 +172,7 @@ export default function PreviewPage() {
 
   return (
     <TabletShell background="sky">
-      {phase !== "submitted" && (
-        <PageHeader onBack={() => router.back()} title={UI_TEXT.preview.heading} />
-      )}
+      {phase === "preview" && <PageHeader onBack={() => router.back()} title={UI_TEXT.preview.heading} />}
 
       {/* 화면에는 보이지 않지만, 그림을 내보내기 위해 실제로 떠 있어야 하는 그림판.
           display:none은 크기가 0이 되어 내보내기가 실패하므로, 대신 화면 밖으로 고정 배치하고 투명하게 둔다. */}
@@ -124,14 +183,18 @@ export default function PreviewPage() {
         {lineArtSrc && <DrawingCanvas ref={canvasRef} lineArtSrc={lineArtSrc} readOnly />}
       </div>
 
-      {phase !== "submitted" ? (
+      {phase === "preview" ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-6">
           <h1 className="text-center text-3xl font-extrabold text-text-primary">{UI_TEXT.preview.heading}</h1>
 
           <div className="aspect-square w-full max-w-[440px] overflow-hidden rounded-[28px] bg-white shadow-soft">
             {compositeSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={compositeSrc} alt="친구들과 함께 완성할 전체 그림 속 내 자리" className="h-full w-full object-contain" />
+              <img
+                src={compositeSrc}
+                alt="우리가 함께 만들 전체 그림 속 내 자리"
+                className="h-full w-full object-contain"
+              />
             ) : (
               <div className="flex h-full items-center justify-center text-text-secondary">{UI_TEXT.common.loading}</div>
             )}
@@ -141,43 +204,26 @@ export default function PreviewPage() {
             <ChildButton variant="ghost" size="large" onClick={() => router.push(`/draw/${assignment.id}`)}>
               {UI_TEXT.preview.keepDrawing}
             </ChildButton>
-            <ChildButton
-              variant="accent"
-              size="large"
-              icon={Send}
-              onClick={handleSend}
-              disabled={phase === "submitting"}
-            >
+            <ChildButton variant="accent" size="large" icon={Send} onClick={handleSend}>
               {UI_TEXT.preview.sendIt}
             </ChildButton>
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-6 text-center">
-          <div className="relative">
-            <div className="aspect-square w-56 overflow-hidden rounded-[28px] bg-white shadow-soft [animation:gentle-pop_600ms_ease-out]">
-              {compositeSrc && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={compositeSrc} alt="" className="h-full w-full object-contain" />
-              )}
-            </div>
-            <Sparkles
-              aria-hidden="true"
-              size={40}
-              className="absolute -right-4 -top-4 text-accent-yellow-dark [animation:sparkle-pulse_1.4s_ease-in-out_infinite]"
+        celebration && (
+          <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-6">
+            <SubmissionCelebration
+              pieceImageSrc={compositeSrc ?? ""}
+              praiseMessage={celebration.praise}
+              totalSeedsBefore={celebration.seedsBefore}
+              totalSeedsAfter={celebration.seedsAfter}
+              onFinished={goToSharedCanvas}
             />
+            <ChildButton variant="ghost" size="medium" onClick={goToSharedCanvas}>
+              {UI_TEXT.submit.cta}
+            </ChildButton>
           </div>
-          <h1 className="text-3xl font-extrabold text-text-primary">{UI_TEXT.submit.heading}</h1>
-          <ChildButton
-            variant="accent"
-            size="large"
-            className="max-w-md"
-            fullWidth
-            onClick={() => router.push(`/waiting-room/${assignment.roomId}`)}
-          >
-            {UI_TEXT.submit.cta}
-          </ChildButton>
-        </div>
+        )
       )}
     </TabletShell>
   );
