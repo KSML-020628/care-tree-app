@@ -38,9 +38,9 @@ export default function AssignmentPage() {
       return activeTheme;
     }
 
-    ensureTheme().then((activeTheme) => {
+    ensureTheme().then(async (activeTheme) => {
       if (!user) return;
-      const nextAssignment = getOrCreateAssignment(user, activeTheme);
+      const nextAssignment = await getOrCreateAssignment(user, activeTheme);
       setAssignment(nextAssignment);
       setLocalAssignment(nextAssignment);
     });

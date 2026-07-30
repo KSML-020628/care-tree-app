@@ -48,10 +48,8 @@ export default function ResultPage() {
   const [showLargeView, setShowLargeView] = useState(false);
 
   useEffect(() => {
-    // localStorage는 브라우저에만 있어서, 서버 렌더링 결과와 달라지지 않도록 마운트된 뒤에만 읽는다.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 위 이유로 의도된 패턴
-    setCanvas(readWeeklyCanvas(params.roomId));
-    setContributions(readContributions(params.roomId));
+    readWeeklyCanvas(params.roomId).then(setCanvas);
+    readContributions(params.roomId).then(setContributions);
   }, [params.roomId]);
 
   useEffect(() => {

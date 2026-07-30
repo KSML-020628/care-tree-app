@@ -84,6 +84,7 @@ export default function PreviewPage() {
   const [transparentLineArtSrc, setTransparentLineArtSrc] = useState<string | null>(null);
   const [compositeSrc, setCompositeSrc] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("preview");
+  const [sendFailed, setSendFailed] = useState(false);
   const [celebration, setCelebration] = useState<{ praise: string; seedsBefore: number; seedsAfter: number } | null>(
     null,
   );
@@ -101,7 +102,7 @@ export default function PreviewPage() {
       return;
     }
     if (!assignment || assignment.id !== params.assignmentId) {
-      setAssignment(getOrCreateAssignment(user, theme));
+      getOrCreateAssignment(user, theme).then(setAssignment);
       return;
     }
     if (drawingAssignmentId !== assignment.id) {
@@ -145,38 +146,47 @@ export default function PreviewPage() {
     return () => window.clearTimeout(timer);
   }, [theme, assignment, lineArtSrc, strokes]);
 
-  function handleSend() {
+  async function handleSend() {
     if (!user || !theme || !assignment || !canvasRef.current) return;
     if (hasSubmittedRef.current) return;
     hasSubmittedRef.current = true;
     setIsSending(true);
+    setSendFailed(false);
 
     const exported = canvasRef.current.exportDrawingLayer();
 
-    // 1) 그림을 먼저 저장하고 제출을 성공 처리한다 (AI를 전혀 기다리지 않는다).
-    const contribution = shareContribution(assignment.roomId, user, assignment.quadrant, exported);
-    const updatedAssignment = updateAssignmentStatus(user.id, theme.id, "SUBMITTED");
-    if (updatedAssignment) setAssignment(updatedAssignment);
-    getOrCreateWeeklyCanvas(user, updatedAssignment ?? assignment);
+    try {
+      // 1) 그림을 먼저 저장하고 제출을 성공 처리한다 (AI를 전혀 기다리지 않는다).
+      //    공동 캔버스는 이제 Supabase에 있어서, 이 저장 자체는 네트워크 요청을 한 번 탄다.
+      const contribution = await shareContribution(assignment.roomId, user, assignment.quadrant, exported);
+      const updatedAssignment = updateAssignmentStatus(user.id, theme.id, "SUBMITTED");
+      if (updatedAssignment) setAssignment(updatedAssignment);
+      await getOrCreateWeeklyCanvas(user, updatedAssignment ?? assignment);
 
-    // 2) 해바라씨를 지급한다.
-    const seedsBefore = totalSeeds;
-    grantSeeds("ZONE_SUBMITTED", assignment.id);
-    const seedsAfter = seedsBefore + 5;
+      // 2) 해바라씨를 지급한다.
+      const seedsBefore = totalSeeds;
+      grantSeeds("ZONE_SUBMITTED", assignment.id);
+      const seedsAfter = seedsBefore + 5;
 
-    // 3) 사전 검수된 기본 칭찬을 즉시 보여준다.
-    setCelebration({ praise: getRandomPraise("SUBMISSION"), seedsBefore, seedsAfter });
-    setPhase("celebrating");
+      // 3) 사전 검수된 기본 칭찬을 즉시 보여준다.
+      setCelebration({ praise: getRandomPraise("SUBMISSION"), seedsBefore, seedsAfter });
+      setPhase("celebrating");
 
-    // 4) AI 분석은 완전히 분리된 백그라운드 요청으로만 실행한다.
-    //    선화가 없으면 AI가 무엇을 그렸는지 알아보기 어려우므로, 색칠 레이어 + 선화를 합친
-    //    이미지를 별도로 만들어서 보낸다(공동 작품에 저장되는 contribution.imageDataUrl은 그대로 둔다).
-    if (lineArtSrc) {
-      void exportAnalysisImage({ drawingLayerDataUrl: exported, lineArtDataUrl: lineArtSrc })
-        .then((analysisImage) => runArtworkAnalysisInBackground(contribution, analysisImage, theme.id, theme.title))
-        .catch(() => {
-          // 합성이 실패해도 조용히 무시한다. 이미 그림 제출·해바라씨·칭찬은 끝난 뒤라 영향이 없다.
-        });
+      // 4) AI 분석은 완전히 분리된 백그라운드 요청으로만 실행한다.
+      //    선화가 없으면 AI가 무엇을 그렸는지 알아보기 어려우므로, 색칠 레이어 + 선화를 합친
+      //    이미지를 별도로 만들어서 보낸다(공동 작품에 저장되는 contribution.imageDataUrl은 그대로 둔다).
+      if (lineArtSrc) {
+        void exportAnalysisImage({ drawingLayerDataUrl: exported, lineArtDataUrl: lineArtSrc })
+          .then((analysisImage) => runArtworkAnalysisInBackground(contribution, analysisImage, theme.id, theme.title))
+          .catch(() => {
+            // 합성이 실패해도 조용히 무시한다. 이미 그림 제출·해바라씨·칭찬은 끝난 뒤라 영향이 없다.
+          });
+      }
+    } catch {
+      // 저장이 실패해도(네트워크 문제 등) 아이가 다시 눌러 볼 수 있게 되돌린다.
+      hasSubmittedRef.current = false;
+      setIsSending(false);
+      setSendFailed(true);
     }
   }
 
@@ -224,6 +234,12 @@ export default function PreviewPage() {
               <div className="flex h-full items-center justify-center text-text-secondary">{UI_TEXT.common.loading}</div>
             )}
           </div>
+
+          {sendFailed && (
+            <p className="text-base font-semibold text-warm" role="alert" aria-live="polite">
+              {UI_TEXT.preview.sendFailed}
+            </p>
+          )}
 
           <div className="grid w-full max-w-md grid-cols-2 gap-4">
             <ChildButton

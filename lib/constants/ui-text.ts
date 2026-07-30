@@ -66,6 +66,7 @@ export const UI_TEXT = {
     heading: "내 그림이 여기에 들어가요!",
     keepDrawing: "조금 더 그릴래요",
     sendIt: "이대로 보낼래요",
+    sendFailed: "지금은 보낼 수 없어요. 한 번만 더 눌러 주세요.",
   },
   submit: {
     cta: "우리 그림 보러 가기",

@@ -18,8 +18,9 @@ function pickRandomQuadrant(exclude: readonly Quadrant[]): Quadrant {
  * placeholder까지 "이미 찬 자리"로 세면, 두 번째 아이부터는 배정 가능한 자리가 하나도 안 남았다고
  * 잘못 판단해 중복 배정이 일어날 수 있다.
  */
-function collectTakenQuadrants(weeklyCanvasId: string): Quadrant[] {
-  return readContributions(weeklyCanvasId)
+async function collectTakenQuadrants(weeklyCanvasId: string): Promise<Quadrant[]> {
+  const contributions = await readContributions(weeklyCanvasId);
+  return contributions
     .filter((contribution) => contribution.status === "SHARED" && !contribution.isPlaceholder)
     .map((contribution) => contribution.quadrant);
 }
@@ -27,16 +28,17 @@ function collectTakenQuadrants(weeklyCanvasId: string): Quadrant[] {
 /**
  * 로그인한 아이에게 사분면을 랜덤으로 배정한다. 이 배정 정책(랜덤·중복 제외·새로고침 유지)은 바꾸지 않는다.
  * - 같은 아이가 새로고침해도 같은 영역을 유지하도록 localStorage에 저장된 값을 먼저 확인한다.
- * - 이미 다른 아이에게 배정된(공유된) 영역은 배정에서 제외한다.
- * - 나중에 서버 API로 교체할 때는 이 함수 내부만 바꾸면 된다(AssignmentRepository 참고).
+ * - 이미 다른 아이에게 배정된(공유된) 영역은 배정에서 제외한다 — 공동 캔버스가 이제 Supabase에
+ *   있으므로(다른 기기에서 제출한 것도 포함), 이 조회 때문에 함수 전체가 비동기가 됐다.
+ * - 배정 자체(어느 사분면을 받았는지)는 아직 localStorage에 남아 있다(README 참고).
  */
-export function getOrCreateAssignment(user: ChildUser, theme: WeeklyTheme): DrawingAssignment {
+export async function getOrCreateAssignment(user: ChildUser, theme: WeeklyTheme): Promise<DrawingAssignment> {
   const key = STORAGE_KEYS.assignment(user.id, theme.id);
   const existing = readJson<DrawingAssignment>(key);
   if (existing) return existing;
 
   const weeklyCanvasId = buildWeeklyCanvasId(theme.id);
-  const takenQuadrants = collectTakenQuadrants(weeklyCanvasId);
+  const takenQuadrants = await collectTakenQuadrants(weeklyCanvasId);
   const quadrant = pickRandomQuadrant(takenQuadrants);
 
   const assignment: DrawingAssignment = {

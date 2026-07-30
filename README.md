@@ -5,8 +5,10 @@
 이번 주 주제는 **나무**입니다.
 
 지금 버전은 UI·그림판·마스코트(케어햄)·해바라씨 보상·AI 작품 분석까지 mock 데이터와 자체
-Route Handler로 전체 흐름이 실제로 동작하도록 구현되어 있고, 실제 백엔드(Supabase)는 아직
-연결되어 있지 않습니다.
+Route Handler로 전체 흐름이 실제로 동작하도록 구현되어 있습니다. 그중 **공동 캔버스(주간
+캔버스·기여물)는 실제 Supabase에 저장**되어, 서로 다른 기기·브라우저에서도 같은 그림을 함께
+볼 수 있습니다. 로그인·배정·해바라씨·AI 분석 결과는 아직 localStorage에 남아 있습니다(아래
+"아직 mock인 부분" 표 참고).
 
 **중요한 설계 원칙**: 순위·경쟁·"완성/미완성" 압박이 없습니다. 다른 아이의 접속 여부나 진행
 상태를 보여주지 않고, 언제든 지금까지 모인 색깔만 봅니다. AI는 그림을 평가하지 않고, 아이에게
@@ -44,11 +46,65 @@ OPENAI_API_KEY=              # 서버 전용. 절대 NEXT_PUBLIC_ 접두어를 �
 OPENAI_ARTWORK_MODEL=gpt-5.4-mini
 ENABLE_AI_ANALYSIS=true      # false로 두면 항상 fallback만 사용
 NEXT_PUBLIC_ENABLE_AI_DEBUG=false  # true일 때만 /debug/ai 화면이 보인다
+NEXT_PUBLIC_SUPABASE_URL=              # Supabase 프로젝트 URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=         # anon(public) 키만 쓴다. service_role 키는 절대 넣지 않는다
 ```
 
 `OPENAI_ARTWORK_MODEL`은 계정/프로젝트마다 접근 가능한 모델이 다르다. `/debug/ai`나 서버 로그에
 `403 ... does not have access to model`이 보이면, API 키로 `GET https://api.openai.com/v1/models`를
 호출해 실제로 쓸 수 있는 모델명으로 바꿔야 한다.
+
+`NEXT_PUBLIC_SUPABASE_*`가 비어 있어도 앱은 죽지 않는다 — 공동 캔버스 관련 함수들이 조용히
+빈 값을 돌려주고 콘솔에 경고만 남긴다(그림 제출 자체는 실패로 처리되니, 실제로 그림을 보내
+보려면 아래 스키마를 먼저 만들어야 한다).
+
+## Supabase 스키마
+
+anon 키만으로는 테이블을 만들 수 없으므로, Supabase 대시보드의 **SQL Editor**에서 아래를
+한 번 실행해야 한다(프로젝트당 한 번만 하면 된다).
+
+```sql
+create table if not exists weekly_canvases (
+  id text primary key,
+  hospital_id text not null,
+  theme_id text not null,
+  status text not null default 'ACTIVE',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists drawing_contributions (
+  id text primary key,
+  weekly_canvas_id text not null references weekly_canvases(id) on delete cascade,
+  participant_id text not null,
+  nickname text not null,
+  avatar text not null,
+  quadrant text not null check (quadrant in ('TOP_LEFT','TOP_RIGHT','BOTTOM_LEFT','BOTTOM_RIGHT')),
+  status text not null default 'SHARED',
+  image_data_url text,
+  thumbnail text,
+  is_placeholder boolean not null default false,
+  shared_at timestamptz
+);
+
+alter table weekly_canvases enable row level security;
+alter table drawing_contributions enable row level security;
+
+-- MVP: 아직 Supabase Auth를 안 쓰고 등록번호 mock 로그인을 그대로 쓰기 때문에, anon 키로 오는
+-- 요청을 전부 허용한다. 실제 운영 전환 시(Supabase Auth 연동 후) 이 정책을 좁혀야 한다.
+create policy "anon read weekly_canvases" on weekly_canvases for select using (true);
+create policy "anon insert weekly_canvases" on weekly_canvases for insert with check (true);
+
+create policy "anon read drawing_contributions" on drawing_contributions for select using (true);
+create policy "anon insert drawing_contributions" on drawing_contributions for insert with check (true);
+create policy "anon update drawing_contributions" on drawing_contributions for update using (true);
+```
+
+`drawing_contributions.id`는 `contribution-{weeklyCanvasId}-{quadrant}` 형태로 코드에서 결정되므로
+(사분면당 하나), 별도 유니크 제약 없이 기본키 충돌만으로 "같은 자리 덮어쓰기"가 안전하게 된다.
+
+이미지는 지금 `image_data_url`/`thumbnail` 컬럼에 base64 data URL 그대로 저장한다(기존
+localStorage 방식을 그대로 옮긴 것). 조각 하나에 수백 KB~1MB 정도라 당장은 문제없지만, 그림이
+많이 쌓이면 Supabase Storage(버킷 + signed URL)로 옮기는 게 낫다.
 
 ## 테스트용 등록번호
 
@@ -118,13 +174,14 @@ lib/
   rewards/                 seed-config.ts, seed-ledger.ts(append-only 해바라씨 원장)
   config/                  주제·사분면·도구·색상·굵기 설정
   constants/                이미지 경로, 화면 문구(UI_TEXT)
-  mock/                    사용자 인증, 주제, 주간 캔버스/기여물 mock 서비스
+  mock/                    사용자 인증(로그인)·주제는 mock, 주간 캔버스/기여물은 Supabase 연동
   storage/                 localStorage 저장소
+  supabase/                Supabase 클라이언트(anon 키, 브라우저 전용)
   drawing/                 캔버스 crop·투명화·합성·stroke 렌더링·반짝이 생성
   store/                   zustand: session, drawing, reward, ai
   utils/                   사분면 랜덤 배정(AssignmentRepository 인터페이스 포함)
 types/                     도메인 타입(theme, assignment, room, drawing, user)
-tests/                     vitest 단위 테스트
+tests/                     vitest 단위 테스트(helpers/fake-supabase.ts로 Supabase 없이도 실행됨)
 ```
 
 ## 아직 mock인 부분 / Supabase 연동 지점
@@ -133,12 +190,12 @@ tests/                     vitest 단위 테스트
 
 | 기능 | 지금 구현 | 나중에 바꿀 파일 |
 | --- | --- | --- |
-| 로그인 인증 | 6자리 숫자 + mock 목록 대조 | `lib/mock/users.ts`의 `verifyRegistrationNumber` |
+| 로그인 인증 | 6자리 숫자 + mock 목록 대조(localStorage) | `lib/mock/users.ts`의 `verifyRegistrationNumber` |
 | 이번 주 주제 조회 | `lib/config/themes.ts`의 고정 배열 | `lib/mock/theme.ts`의 `fetchActiveTheme` |
-| 사분면 배정 | localStorage 기반 랜덤 배정 | `lib/utils/random-assignment.ts`(`AssignmentRepository` 인터페이스로 이미 분리됨) |
-| 주간 캔버스·기여물 | localStorage, 아직 안 채워진 자리는 mock 케어햄 색칠본으로 즉시 채움(실시간 대기 없음) | `lib/mock/weekly-canvas.ts` |
+| 사분면 배정 | localStorage 기반 랜덤 배정(단, 취한 자리 조회는 아래 Supabase 데이터를 본다) | `lib/utils/random-assignment.ts`(`AssignmentRepository` 인터페이스로 이미 분리됨) |
+| **주간 캔버스·기여물** | **Supabase(`weekly_canvases`/`drawing_contributions`)** — 아직 안 채워진 자리는 mock 케어햄 색칠본으로 즉시 채움(실시간 대기 없음) | `lib/mock/weekly-canvas.ts`, `lib/supabase/client.ts` |
 | 해바라씨 원장 | localStorage, append-only | `lib/rewards/seed-ledger.ts` |
-| AI 작품 분석 | OpenAI 호출 + Zod 검증, 실패 시 즉시 fallback | `lib/ai/artwork-analysis.client.ts`, `app/api/ai/artwork-analysis/route.ts` |
+| AI 작품 분석 | OpenAI 호출 + Zod 검증, 실패 시 즉시 fallback(결과는 localStorage 캐시) | `lib/ai/artwork-analysis.client.ts`, `app/api/ai/artwork-analysis/route.ts` |
 | 그림 자동저장 | localStorage | `lib/storage/local-drawing-storage.ts` |
 
 ## 알려진 제한사항
@@ -156,9 +213,16 @@ tests/                     vitest 단위 테스트
   보여주지 않습니다).
 - 무지개색은 Konva 선형 그라데이션으로 그려지며, 반짝이(금/은)는 단색 + 별 파티클 효과로
   대체되어 있습니다(`GLITTER` 도구를 쓸 때만).
-- 그림·해바라씨·AI 분석 결과는 브라우저 localStorage에만 저장되므로 기기를 바꾸거나 브라우저
-  데이터를 지우면 사라집니다. 그림이 많이 쌓이면 localStorage 용량 제한에 걸릴 수 있습니다
-  (저장 실패 시 자동 재시도 + 상태 표시로 완화).
+- 그림 자체(공동 캔버스)는 Supabase에 저장되어 기기가 달라도 보이지만, 로그인 세션·사분면
+  배정·해바라씨·AI 분석 결과는 아직 브라우저 localStorage에만 있어서 기기를 바꾸거나 브라우저
+  데이터를 지우면 사라집니다(저장 실패 시 자동 재시도 + 상태 표시로 완화).
+- Supabase RLS는 지금 anon 키로 오는 모든 읽기/쓰기를 허용합니다(Supabase Auth 연동 전이라
+  요청자를 구분할 방법이 없기 때문입니다). 등록번호 로그인을 실제 Supabase Auth와 연결하기
+  전까지는, 이론적으로 누구나 다른 병원의 캔버스에 쓸 수 있는 상태입니다 — MVP/데모 범위의
+  의도된 단순화이며, 운영 전환 시 반드시 좁혀야 합니다.
+- 조각 이미지는 Supabase Storage 버킷이 아니라 `drawing_contributions` 테이블에 base64 텍스트로
+  그대로 저장됩니다(기존 localStorage 방식을 그대로 옮긴 것). 그림이 많이 쌓이면 Storage로
+  옮기는 게 낫습니다.
 - AI 분석은 실제 키(`gpt-5.4-mini`)로 엔드투엔드 호출까지 확인했습니다(`source: "AI"` 응답 확인).
   키가 접근 가능한 모델이 vision 입력이나 구조화된 JSON 출력을 지원하지 않으면 매 요청이
   fallback으로 처리되며, 이 경우에도 아이 경험은 전혀 끊기지 않습니다.

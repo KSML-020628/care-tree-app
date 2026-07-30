@@ -8,30 +8,25 @@ import PageHeader from "@/components/common/PageHeader";
 import TabletShell from "@/components/common/TabletShell";
 import CareHam from "@/components/mascot/CareHam";
 import { UI_TEXT } from "@/lib/constants/ui-text";
-import { readContributions } from "@/lib/mock/weekly-canvas";
+import { listWeeklyCanvases, readContributions } from "@/lib/mock/weekly-canvas";
 import type { WeeklyCanvas } from "@/types/room";
 
 interface GalleryEntry {
   canvas: WeeklyCanvas;
-  sharedCount: number;
+  /** placeholder(케어햄 자리표시자)는 빼고, 실제로 참여한 아이만 센다. */
+  realParticipantCount: number;
 }
 
-/** localStorage에 저장된 주간 캔버스 목록을 찾는다. 나중에는 Supabase 조회로 바꾸면 된다. */
-function findGalleryEntries(): GalleryEntry[] {
-  if (typeof window === "undefined") return [];
+/** Supabase에 있는 주간 캔버스 목록을 가져와서, 실제로 누군가 참여한 캔버스만 남긴다. */
+async function findGalleryEntries(): Promise<GalleryEntry[]> {
+  const canvases = await listWeeklyCanvases();
   const entries: GalleryEntry[] = [];
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const key = window.localStorage.key(index);
-    if (!key || !key.startsWith("care-tree:weekly-canvas:")) continue;
-    try {
-      const raw = window.localStorage.getItem(key);
-      if (!raw) continue;
-      const canvas = JSON.parse(raw) as WeeklyCanvas;
-      const sharedCount = readContributions(canvas.id).filter((item) => item.status === "SHARED").length;
-      if (sharedCount > 0) entries.push({ canvas, sharedCount });
-    } catch {
-      // 손상된 데이터는 그냥 건너뛴다.
-    }
+  for (const canvas of canvases) {
+    const contributions = await readContributions(canvas.id);
+    const realParticipantCount = contributions.filter(
+      (item) => item.status === "SHARED" && !item.isPlaceholder,
+    ).length;
+    if (realParticipantCount > 0) entries.push({ canvas, realParticipantCount });
   }
   return entries;
 }
@@ -41,9 +36,7 @@ export default function GalleryPage() {
   const [entries, setEntries] = useState<GalleryEntry[] | null>(null);
 
   useEffect(() => {
-    // localStorage는 브라우저에만 있어서, 서버 렌더링 결과와 달라지지 않도록 마운트된 뒤에만 읽는다.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 위 이유로 의도된 패턴
-    setEntries(findGalleryEntries());
+    findGalleryEntries().then(setEntries);
   }, []);
 
   return (
@@ -63,7 +56,7 @@ export default function GalleryPage() {
           </div>
         ) : (
           <div className="grid w-full max-w-3xl grid-cols-2 gap-4">
-            {entries.map(({ canvas, sharedCount }) => (
+            {entries.map(({ canvas, realParticipantCount }) => (
               <button
                 key={canvas.id}
                 type="button"
@@ -72,7 +65,9 @@ export default function GalleryPage() {
               >
                 <CareHam type="TOGETHER" size="SMALL" />
                 <span className="font-extrabold text-text-primary">{UI_TEXT.weeklyTheme.eyebrow}</span>
-                <span className="text-sm font-semibold text-text-secondary">{sharedCount}명이 함께 만들고 있어요</span>
+                <span className="text-sm font-semibold text-text-secondary">
+                  {realParticipantCount}명이 함께 만들고 있어요
+                </span>
               </button>
             ))}
           </div>

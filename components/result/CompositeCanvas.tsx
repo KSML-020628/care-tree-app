@@ -30,9 +30,9 @@ export default function CompositeCanvas({ weeklyCanvasId, transparentLineArtSrc,
   const analyses = useHydratedAnalyses(contributions.map((item) => item.id));
 
   useEffect(() => {
-    // localStorage는 브라우저에만 있어서, 서버 렌더링 결과와 달라지지 않도록 마운트된 뒤에만 읽는다.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 위 이유로 의도된 패턴
-    setContributions(readContributions(weeklyCanvasId).filter((item) => item.status === "SHARED"));
+    readContributions(weeklyCanvasId).then((items) => {
+      setContributions(items.filter((item) => item.status === "SHARED"));
+    });
   }, [weeklyCanvasId]);
 
   return (

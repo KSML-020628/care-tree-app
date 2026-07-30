@@ -62,8 +62,7 @@ export default function DrawPage() {
       return;
     }
     if (!assignment || assignment.id !== params.assignmentId) {
-      const nextAssignment = getOrCreateAssignment(user, theme);
-      setAssignment(nextAssignment);
+      getOrCreateAssignment(user, theme).then(setAssignment);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, user, theme, assignment, params.assignmentId]);
