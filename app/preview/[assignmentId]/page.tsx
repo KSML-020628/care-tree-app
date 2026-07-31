@@ -156,23 +156,27 @@ export default function PreviewPage() {
     const exported = canvasRef.current.exportDrawingLayer();
 
     try {
-      // 1) 그림을 먼저 저장하고 제출을 성공 처리한다 (AI를 전혀 기다리지 않는다).
+      // 1) 이 주의 공동 캔버스가 먼저 있어야 한다 — drawing_contributions.weekly_canvas_id가
+      //    weekly_canvases를 참조하는 외래키라서, 캔버스보다 조각을 먼저 저장하려고 하면
+      //    (특히 이 캔버스에 대한 첫 제출일 때) 항상 실패한다. 그래서 캔버스 생성이 먼저다.
+      await getOrCreateWeeklyCanvas(user, assignment);
+
+      // 2) 그림을 저장하고 제출을 성공 처리한다 (AI를 전혀 기다리지 않는다).
       //    공동 캔버스는 이제 Supabase에 있어서, 이 저장 자체는 네트워크 요청을 한 번 탄다.
       const contribution = await shareContribution(assignment.roomId, user, assignment.quadrant, exported);
       const updatedAssignment = updateAssignmentStatus(user.id, theme.id, "SUBMITTED");
       if (updatedAssignment) setAssignment(updatedAssignment);
-      await getOrCreateWeeklyCanvas(user, updatedAssignment ?? assignment);
 
-      // 2) 해바라씨를 지급한다.
+      // 3) 해바라씨를 지급한다.
       const seedsBefore = totalSeeds;
       grantSeeds("ZONE_SUBMITTED", assignment.id);
       const seedsAfter = seedsBefore + 5;
 
-      // 3) 사전 검수된 기본 칭찬을 즉시 보여준다.
+      // 4) 사전 검수된 기본 칭찬을 즉시 보여준다.
       setCelebration({ praise: getRandomPraise("SUBMISSION"), seedsBefore, seedsAfter });
       setPhase("celebrating");
 
-      // 4) AI 분석은 완전히 분리된 백그라운드 요청으로만 실행한다.
+      // 5) AI 분석은 완전히 분리된 백그라운드 요청으로만 실행한다.
       //    선화가 없으면 AI가 무엇을 그렸는지 알아보기 어려우므로, 색칠 레이어 + 선화를 합친
       //    이미지를 별도로 만들어서 보낸다(공동 작품에 저장되는 contribution.imageDataUrl은 그대로 둔다).
       if (lineArtSrc) {
