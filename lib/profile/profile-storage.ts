@@ -65,7 +65,11 @@ export async function getProfiles(participantIds: string[]): Promise<Record<stri
 }
 
 export async function saveProfile(profile: ChildProfile): Promise<ChildProfile> {
-  warnIfNotConfigured("프로필 저장");
+  if (!isSupabaseConfigured) {
+    warnIfNotConfigured("프로필 저장");
+    // 존재하지 않는 placeholder 주소로 요청을 보내 느리게 실패하는 대신, 바로 명확하게 실패시킨다.
+    throw new Error("Supabase 환경변수가 설정되지 않았어요.");
+  }
   const row = {
     id: profile.participantId,
     artist_name: profile.artistName,
@@ -85,6 +89,10 @@ export async function updateProfileImage(
   imageDataUrl: string,
   source: AvatarSource,
 ): Promise<void> {
+  if (!isSupabaseConfigured) {
+    warnIfNotConfigured("프로필 이미지 업데이트");
+    return;
+  }
   const { error } = await supabase
     .from("child_profiles")
     .update({ avatar_image_url: imageDataUrl, avatar_source: source, updated_at: new Date().toISOString() })

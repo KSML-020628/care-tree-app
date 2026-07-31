@@ -18,6 +18,7 @@ export const UI_TEXT = {
     logout: "로그아웃",
     logoutConfirmTitle: "로그아웃 할까요?",
     logoutConfirmBody: "다음에 들어올 때 팔찌 번호를 다시 눌러야 해요.",
+    saveToDevice: "내 기기에 저장하기",
   },
   login: {
     title: "팔찌에 적힌 번호를 눌러주세요",
@@ -115,6 +116,7 @@ export const UI_TEXT = {
     recommendByCareHam: "케어햄이 추천해줘요",
     /** 보호자·운영자 전용 임시 경로. 아동에게 "건너뛰기"라고 하지 않는다. */
     startWithDefaultCareHam: "다음에 그릴게요",
+    startWithDefaultCareHamFailed: "지금은 안 돼요. 한 번만 더 눌러 주세요.",
   },
   profileDraw: {
     heading: "나를 나타내는 그림",
@@ -125,6 +127,7 @@ export const UI_TEXT = {
     heading: "친구들에게 이렇게 보여요!",
     confirm: "이 그림으로 할래요",
     keepDrawing: "조금 더 그릴래요",
+    saveFailed: "지금은 저장할 수 없어요. 한 번만 더 눌러 주세요.",
   },
   profileHub: {
     heading: "내 화가 표시",

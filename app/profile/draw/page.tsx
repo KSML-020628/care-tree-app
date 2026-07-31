@@ -16,10 +16,6 @@ import { UI_TEXT } from "@/lib/constants/ui-text";
 import { useDrawingStore } from "@/lib/store/drawing-store";
 import { useSessionStore } from "@/lib/store/session-store";
 
-/** 프로필 그림판에는 원본 도안이 없다 — 완전히 투명한 1x1 placeholder로 "선화 없음"을 표현한다. */
-const BLANK_LINE_ART =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
-
 function buildProfileDrawingId(participantId: string): string {
   return `profile-${participantId}`;
 }
@@ -98,7 +94,7 @@ function ProfileDrawContent() {
         />
 
         <div className="flex min-w-0 flex-1 items-center justify-center">
-          <DrawingCanvas ref={canvasRef} lineArtSrc={BLANK_LINE_ART} />
+          <DrawingCanvas ref={canvasRef} />
         </div>
 
         <ColorPalette colorId={colorId} onColorChange={setColorId} colors={PROFILE_COLOR_PALETTE} />

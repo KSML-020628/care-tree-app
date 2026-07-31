@@ -1,5 +1,6 @@
 "use client";
 
+import { Download } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import ChildButton from "@/components/common/ChildButton";
@@ -12,9 +13,7 @@ import { useDrawingStore } from "@/lib/store/drawing-store";
 import { useProfileStore } from "@/lib/store/profile-store";
 import { useSessionStore } from "@/lib/store/session-store";
 import { clearDrawingProgress } from "@/lib/storage/local-drawing-storage";
-
-const BLANK_LINE_ART =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+import { downloadDataUrlImage } from "@/lib/utils/download-image";
 
 function buildProfileDrawingId(participantId: string): string {
   return `profile-${participantId}`;
@@ -37,6 +36,7 @@ function ProfilePreviewContent() {
   const canvasRef = useRef<DrawingCanvasHandle>(null);
   const [avatarImageUrl, setAvatarImageUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -61,16 +61,28 @@ function ProfilePreviewContent() {
   async function handleConfirm() {
     if (!user || !avatarImageUrl || isSaving) return;
     setIsSaving(true);
-    const artistName = profile?.artistName ?? user.nickname;
-    const draft = buildDrawnProfile(user.id, artistName, avatarImageUrl);
-    await saveAndSetProfile(draft);
-    clearDrawingProgress(buildProfileDrawingId(user.id));
-    router.replace(mode === "edit" ? "/profile" : "/home");
+    setSaveFailed(false);
+    try {
+      const artistName = profile?.artistName ?? user.nickname;
+      const draft = buildDrawnProfile(user.id, artistName, avatarImageUrl);
+      await saveAndSetProfile(draft);
+      clearDrawingProgress(buildProfileDrawingId(user.id));
+      router.replace(mode === "edit" ? "/profile" : "/home");
+    } catch {
+      // 저장이 실패해도(네트워크 문제 등) 아이가 다시 눌러 볼 수 있게 되돌린다.
+      setIsSaving(false);
+      setSaveFailed(true);
+    }
   }
 
   function handleKeepDrawing() {
     const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
     router.push(`/profile/draw${query}`);
+  }
+
+  function handleDownload() {
+    if (!avatarImageUrl) return;
+    downloadDataUrlImage(avatarImageUrl, "케어햄스케치북-내프로필그림.png");
   }
 
   if (!user) {
@@ -90,7 +102,7 @@ function ProfilePreviewContent() {
         className="pointer-events-none fixed left-0 top-0 -z-10 h-[512px] w-[512px] opacity-0"
         aria-hidden="true"
       >
-        <DrawingCanvas ref={canvasRef} lineArtSrc={BLANK_LINE_ART} readOnly />
+        <DrawingCanvas ref={canvasRef} readOnly />
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-10 py-6">
@@ -100,6 +112,18 @@ function ProfilePreviewContent() {
           <ProfilePreviewCard avatarImageUrl={avatarImageUrl} artistName={profile?.artistName ?? user.nickname} />
         ) : (
           <p className="text-lg font-bold text-text-secondary">{UI_TEXT.common.loading}</p>
+        )}
+
+        {saveFailed && (
+          <p className="text-base font-semibold text-warm" role="alert" aria-live="polite">
+            {UI_TEXT.profilePreview.saveFailed}
+          </p>
+        )}
+
+        {avatarImageUrl && (
+          <ChildButton variant="ghost" size="medium" icon={Download} onClick={handleDownload}>
+            {UI_TEXT.common.saveToDevice}
+          </ChildButton>
         )}
 
         <div className="grid w-full max-w-md grid-cols-2 gap-4">

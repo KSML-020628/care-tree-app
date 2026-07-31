@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Sparkles, X, ZoomIn } from "lucide-react";
+import { Archive, Download, Sparkles, X, ZoomIn } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import AssignmentHighlight from "@/components/assignment/AssignmentHighlight";
@@ -13,10 +13,12 @@ import CompositeCanvas from "@/components/result/CompositeCanvas";
 import ParticipantAvatarList from "@/components/profile/ParticipantAvatarList";
 import { UI_TEXT } from "@/lib/constants/ui-text";
 import { getQuadrantPercentRect } from "@/lib/config/quadrants";
+import { compositeFinalArtwork } from "@/lib/drawing/canvas-export";
 import { createTransparentLineArt } from "@/lib/drawing/quadrant-crop";
 import { fetchActiveTheme } from "@/lib/mock/theme";
 import { readContributions, readWeeklyCanvas } from "@/lib/mock/weekly-canvas";
 import { useSessionStore } from "@/lib/store/session-store";
+import { downloadDataUrlImage } from "@/lib/utils/download-image";
 import type { Quadrant } from "@/types/assignment";
 import type { DrawingContribution, WeeklyCanvas } from "@/types/room";
 import type { WeeklyTheme } from "@/types/theme";
@@ -50,6 +52,7 @@ export default function ResultPage() {
   const [phase, setPhase] = useState<Phase>("animating");
   const [showLargeView, setShowLargeView] = useState(false);
   const [highlightedQuadrant, setHighlightedQuadrant] = useState<Quadrant | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     readWeeklyCanvas(params.roomId).then(setCanvas);
@@ -87,6 +90,19 @@ export default function ResultPage() {
   // "함께한 화가" 수는 실제로 참여한 아이만 센다. placeholder(아직 안 채워진 자리를 채운 케어햄
   // 색칠본)까지 세면, 실제로는 한 명뿐인데 여러 명이 참여한 것처럼 보일 수 있다.
   const realParticipantCount = sharedContributions.filter((item) => !item.isPlaceholder).length;
+
+  async function handleDownloadArtwork() {
+    if (!theme || !transparentLineArtSrc || isDownloading) return;
+    setIsDownloading(true);
+    try {
+      // 화면에는 조각마다 따로 움직이는 레이어로 보여주지만(CompositeCanvas), 파일로 저장할 때는
+      // 한 장으로 합친 정지 이미지가 되어야 하므로 기존 좌표 기반 합성 함수를 그대로 재사용한다.
+      const composite = await compositeFinalArtwork(quadrantImages, transparentLineArtSrc);
+      downloadDataUrlImage(composite, `케어햄스케치북-우리그림-${theme.title}.png`);
+    } finally {
+      setIsDownloading(false);
+    }
+  }
 
   return (
     <TabletShell background="sky">
@@ -161,6 +177,15 @@ export default function ResultPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1B234A]/80 p-8">
           <button
             type="button"
+            onClick={handleDownloadArtwork}
+            disabled={isDownloading}
+            aria-label={UI_TEXT.common.saveToDevice}
+            className="absolute left-6 top-6 flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-text-primary disabled:opacity-50"
+          >
+            <Download aria-hidden="true" size={24} />
+          </button>
+          <button
+            type="button"
             onClick={() => setShowLargeView(false)}
             aria-label={UI_TEXT.common.back}
             className="absolute right-6 top-6 flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-text-primary"
@@ -168,7 +193,7 @@ export default function ResultPage() {
             <X aria-hidden="true" size={26} />
           </button>
           <div className="aspect-square w-full max-w-[720px] overflow-hidden rounded-[32px] bg-white">
-            <CompositeCanvas weeklyCanvasId={canvas.id} transparentLineArtSrc={transparentLineArtSrc} />
+            <CompositeCanvas weeklyCanvasId={canvas.id} transparentLineArtSrc={transparentLineArtSrc} fill />
           </div>
         </div>
       )}

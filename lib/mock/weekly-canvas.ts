@@ -88,7 +88,11 @@ export async function getOrCreateWeeklyCanvas(
   const existing = await readWeeklyCanvas(assignment.roomId);
   if (existing) return existing;
 
-  warnIfNotConfigured("주간 캔버스 생성");
+  if (!isSupabaseConfigured) {
+    warnIfNotConfigured("주간 캔버스 생성");
+    // 존재하지 않는 placeholder 주소로 요청을 보내 저장된 것처럼 착각하게 두는 대신, 바로 명확하게 실패시킨다.
+    throw new Error("Supabase 환경변수가 설정되지 않았어요.");
+  }
   const row: WeeklyCanvasRow = {
     id: assignment.roomId,
     hospital_id: currentUser.hospitalId,
@@ -234,7 +238,10 @@ export async function shareContribution(
   imageDataUrl: string,
   participantSnapshot?: ParticipantSnapshot,
 ): Promise<DrawingContribution> {
-  warnIfNotConfigured("그림 제출");
+  if (!isSupabaseConfigured) {
+    warnIfNotConfigured("그림 제출");
+    throw new Error("Supabase 환경변수가 설정되지 않았어요.");
+  }
   const contribution: DrawingContribution = {
     id: `contribution-${weeklyCanvasId}-${quadrant}`,
     weeklyCanvasId,

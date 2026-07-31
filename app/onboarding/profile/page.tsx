@@ -22,6 +22,7 @@ export default function ProfileOnboardingPage() {
   const loadProfile = useProfileStore((state) => state.loadProfile);
   const saveAndSetProfile = useProfileStore((state) => state.saveAndSetProfile);
   const [startingDefault, setStartingDefault] = useState(false);
+  const [startDefaultFailed, setStartDefaultFailed] = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -44,9 +45,15 @@ export default function ProfileOnboardingPage() {
   async function handleStartWithDefaultCareHam() {
     if (!user || startingDefault) return;
     setStartingDefault(true);
-    const draft = buildDefaultCareHamProfile(user.id, user.nickname);
-    await saveAndSetProfile(draft);
-    router.replace("/home");
+    setStartDefaultFailed(false);
+    try {
+      const draft = buildDefaultCareHamProfile(user.id, user.nickname);
+      await saveAndSetProfile(draft);
+      router.replace("/home");
+    } catch {
+      setStartingDefault(false);
+      setStartDefaultFailed(true);
+    }
   }
 
   if (!user || !profileLoaded || profile?.onboardingCompleted) {
@@ -64,6 +71,7 @@ export default function ProfileOnboardingPage() {
       <ProfileOnboardingIntro
         onStartDrawing={handleStartDrawing}
         onStartWithDefaultCareHam={handleStartWithDefaultCareHam}
+        startWithDefaultCareHamFailed={startDefaultFailed}
       />
     </TabletShell>
   );

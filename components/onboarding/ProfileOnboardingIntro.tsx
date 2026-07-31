@@ -11,6 +11,7 @@ const DRAWING_SUGGESTIONS = ["별", "꽃", "자동차", "공룡", "무지개", "
 interface ProfileOnboardingIntroProps {
   onStartDrawing: (suggestion?: string) => void;
   onStartWithDefaultCareHam: () => void;
+  startWithDefaultCareHamFailed?: boolean;
 }
 
 /**
@@ -21,6 +22,7 @@ interface ProfileOnboardingIntroProps {
 export default function ProfileOnboardingIntro({
   onStartDrawing,
   onStartWithDefaultCareHam,
+  startWithDefaultCareHamFailed = false,
 }: ProfileOnboardingIntroProps) {
   function handleRecommend() {
     const suggestion = DRAWING_SUGGESTIONS[Math.floor(Math.random() * DRAWING_SUGGESTIONS.length)];
@@ -55,6 +57,12 @@ export default function ProfileOnboardingIntro({
       >
         {UI_TEXT.onboarding.startWithDefaultCareHam}
       </button>
+
+      {startWithDefaultCareHamFailed && (
+        <p className="text-xs font-semibold text-warm" role="alert" aria-live="polite">
+          {UI_TEXT.onboarding.startWithDefaultCareHamFailed}
+        </p>
+      )}
     </div>
   );
 }

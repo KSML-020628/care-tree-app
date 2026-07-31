@@ -1,6 +1,6 @@
 "use client";
 
-import { Send } from "lucide-react";
+import { Download, Send } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import ChildButton from "@/components/common/ChildButton";
@@ -23,6 +23,7 @@ import { useProfileStore } from "@/lib/store/profile-store";
 import { useRewardStore } from "@/lib/store/reward-store";
 import { useSessionStore } from "@/lib/store/session-store";
 import { getOrCreateAssignment, updateAssignmentStatus } from "@/lib/utils/random-assignment";
+import { downloadDataUrlImage } from "@/lib/utils/download-image";
 import type { DrawingContribution } from "@/types/room";
 
 type Phase = "preview" | "celebrating";
@@ -213,6 +214,11 @@ export default function PreviewPage() {
     router.push(`/waiting-room/${assignment.roomId}`);
   }
 
+  function handleDownload() {
+    if (!compositeSrc) return;
+    downloadDataUrlImage(compositeSrc, "케어햄스케치북-내그림.png");
+  }
+
   if (!user || !theme || !assignment) {
     return (
       <TabletShell>
@@ -252,6 +258,12 @@ export default function PreviewPage() {
               <div className="flex h-full items-center justify-center text-text-secondary">{UI_TEXT.common.loading}</div>
             )}
           </div>
+
+          {compositeSrc && (
+            <ChildButton variant="ghost" size="medium" icon={Download} onClick={handleDownload}>
+              {UI_TEXT.common.saveToDevice}
+            </ChildButton>
+          )}
 
           {sendFailed && (
             <p className="text-base font-semibold text-warm" role="alert" aria-live="polite">

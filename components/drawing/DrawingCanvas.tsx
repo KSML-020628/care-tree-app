@@ -22,15 +22,22 @@ export interface DrawingCanvasHandle {
 }
 
 interface DrawingCanvasProps {
-  lineArtSrc: string;
+  /** 없으면(프로필 그림판처럼 원본 도안이 없는 화면) 선화 레이어를 아예 그리지 않는다. */
+  lineArtSrc?: string | null;
   /** true면 손으로 그릴 수 없고 지금까지 그린 그림만 보여준다(미리보기 화면 등에서 사용). */
   readOnly?: boolean;
 }
 
-function useHtmlImage(src: string): HTMLImageElement | null {
+function useHtmlImage(src: string | null | undefined): HTMLImageElement | null {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   useEffect(() => {
+    if (!src) {
+      // src가 도중에 사라지면(값 있음 -> 없음) 이전 이미지가 남아있지 않도록 지운다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 위 이유로 의도된 패턴
+      setImage(null);
+      return;
+    }
     let cancelled = false;
     const element = new window.Image();
     element.onload = () => {
