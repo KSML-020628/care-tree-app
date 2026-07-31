@@ -1,4 +1,5 @@
 import type { Quadrant } from "./assignment";
+import type { ParticipantSnapshot } from "@/lib/profile/profile.types";
 
 /**
  * 이 파일은 원래 "게임방" 개념(RoomStatus: WAITING/IN_PROGRESS/COMPLETED)을 쓰던 자리다.
@@ -33,4 +34,9 @@ export interface DrawingContribution {
   /** 실제 참여자가 아니라 미리 준비된 케어햄 색칠본인지 표시한다(화면에는 노출하지 않음). */
   isPlaceholder?: boolean;
   sharedAt?: string;
+  /**
+   * 제출 그 순간의 프로필(화가 이름·프로필 그림) 스냅샷. 나중에 아이가 프로필을 새로 그려도
+   * 이미 전시된 이 조각의 참여자 표시는 그대로 유지된다.
+   */
+  participantSnapshot?: ParticipantSnapshot;
 }

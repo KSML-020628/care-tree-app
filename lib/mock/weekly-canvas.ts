@@ -2,6 +2,7 @@ import { QUADRANTS } from "@/lib/config/quadrants";
 import { createFlatTintDataUrl } from "@/lib/drawing/quadrant-crop";
 import { MOCK_FRIEND_USERS } from "@/lib/mock/users";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase/client";
+import type { ParticipantSnapshot } from "@/lib/profile/profile.types";
 import type { DrawingAssignment, Quadrant } from "@/types/assignment";
 import type { ContributionStatus, DrawingContribution, WeeklyCanvas, WeeklyCanvasStatus } from "@/types/room";
 import type { ChildUser } from "@/types/user";
@@ -42,6 +43,7 @@ interface DrawingContributionRow {
   thumbnail: string | null;
   is_placeholder: boolean;
   shared_at: string | null;
+  participant_snapshot: ParticipantSnapshot | null;
 }
 
 function toWeeklyCanvas(row: WeeklyCanvasRow): WeeklyCanvas {
@@ -67,6 +69,7 @@ function toDrawingContribution(row: DrawingContributionRow): DrawingContribution
     thumbnail: row.thumbnail ?? undefined,
     isPlaceholder: row.is_placeholder,
     sharedAt: row.shared_at ?? undefined,
+    participantSnapshot: row.participant_snapshot ?? undefined,
   };
 }
 
@@ -146,6 +149,25 @@ export async function readContributions(weeklyCanvasId: string): Promise<Drawing
   return (data ?? []).map(toDrawingContribution);
 }
 
+/** 한 아이가 지금까지 실제로 참여한(placeholder 아닌) 기여물을 전부 가져온다. 프로필 화면 통계용. */
+export async function readContributionsByParticipant(participantId: string): Promise<DrawingContribution[]> {
+  if (!isSupabaseConfigured) {
+    warnIfNotConfigured("참여자 기여물 조회");
+    return [];
+  }
+  const { data, error } = await supabase
+    .from("drawing_contributions")
+    .select("*")
+    .eq("participant_id", participantId)
+    .eq("status", "SHARED")
+    .eq("is_placeholder", false);
+  if (error) {
+    console.error("[weekly-canvas] 참여자 기여물 조회 실패:", error.message);
+    return [];
+  }
+  return (data ?? []).map(toDrawingContribution);
+}
+
 async function saveContribution(contribution: DrawingContribution): Promise<DrawingContribution> {
   const row = {
     id: contribution.id,
@@ -159,6 +181,7 @@ async function saveContribution(contribution: DrawingContribution): Promise<Draw
     thumbnail: contribution.thumbnail ?? null,
     is_placeholder: contribution.isPlaceholder ?? false,
     shared_at: contribution.sharedAt ?? null,
+    participant_snapshot: contribution.participantSnapshot ?? null,
   };
   // id가 weeklyCanvasId+quadrant로 정해지므로(아래), 같은 자리에 다시 저장하면 기존 값(placeholder
   // 포함)을 자연스럽게 덮어쓴다 — 기본 upsert 충돌 기준(기본키 id)을 그대로 쓴다.
@@ -209,6 +232,7 @@ export async function shareContribution(
   participant: ChildUser,
   quadrant: Quadrant,
   imageDataUrl: string,
+  participantSnapshot?: ParticipantSnapshot,
 ): Promise<DrawingContribution> {
   warnIfNotConfigured("그림 제출");
   const contribution: DrawingContribution = {
@@ -222,6 +246,7 @@ export async function shareContribution(
     imageDataUrl,
     thumbnail: imageDataUrl,
     sharedAt: new Date().toISOString(),
+    participantSnapshot,
   };
   return saveContribution(contribution);
 }

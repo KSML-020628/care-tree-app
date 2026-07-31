@@ -16,8 +16,10 @@ import { createTransparentLineArt, cropQuadrantLineArt } from "@/lib/drawing/qua
 import { getRandomPraise } from "@/lib/mascot/praise-messages";
 import { fetchActiveTheme } from "@/lib/mock/theme";
 import { getOrCreateWeeklyCanvas, shareContribution } from "@/lib/mock/weekly-canvas";
+import { toParticipantSnapshot } from "@/lib/profile/profile.types";
 import { useAiStore } from "@/lib/store/ai-store";
 import { useDrawingStore } from "@/lib/store/drawing-store";
+import { useProfileStore } from "@/lib/store/profile-store";
 import { useRewardStore } from "@/lib/store/reward-store";
 import { useSessionStore } from "@/lib/store/session-store";
 import { getOrCreateAssignment, updateAssignmentStatus } from "@/lib/utils/random-assignment";
@@ -74,6 +76,7 @@ export default function PreviewPage() {
   const totalSeeds = useRewardStore((state) => state.totalSeeds);
   const loadRewardsForParticipant = useRewardStore((state) => state.loadForParticipant);
   const grantSeeds = useRewardStore((state) => state.grantSeeds);
+  const profile = useProfileStore((state) => state.profile);
 
   const canvasRef = useRef<DrawingCanvasHandle>(null);
   // 빠르게 두 번 눌러도 제출·해바라씨·AI 요청이 중복되지 않도록, 리렌더링을 기다리지 않는
@@ -97,6 +100,7 @@ export default function PreviewPage() {
       return;
     }
     loadRewardsForParticipant(user.id);
+    if (!profile) useProfileStore.getState().loadProfile(user.id);
     if (!theme) {
       fetchActiveTheme().then(setTheme);
       return;
@@ -120,6 +124,7 @@ export default function PreviewPage() {
     setAssignment,
     loadForAssignment,
     loadRewardsForParticipant,
+    profile,
   ]);
 
   useEffect(() => {
@@ -163,7 +168,16 @@ export default function PreviewPage() {
 
       // 2) 그림을 저장하고 제출을 성공 처리한다 (AI를 전혀 기다리지 않는다).
       //    공동 캔버스는 이제 Supabase에 있어서, 이 저장 자체는 네트워크 요청을 한 번 탄다.
-      const contribution = await shareContribution(assignment.roomId, user, assignment.quadrant, exported);
+      //    지금 프로필을 스냅샷으로 함께 저장해서, 나중에 프로필을 새로 그려도 이 조각의
+      //    참여자 표시(그림·이름)는 제출 당시 그대로 남는다.
+      const participantSnapshot = profile ? toParticipantSnapshot(profile) : undefined;
+      const contribution = await shareContribution(
+        assignment.roomId,
+        user,
+        assignment.quadrant,
+        exported,
+        participantSnapshot,
+      );
       const updatedAssignment = updateAssignmentStatus(user.id, theme.id, "SUBMITTED");
       if (updatedAssignment) setAssignment(updatedAssignment);
 

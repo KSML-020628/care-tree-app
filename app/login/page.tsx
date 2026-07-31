@@ -52,7 +52,8 @@ export default function LoginPage() {
     }
     login(user);
     setStatus("welcome");
-    window.setTimeout(() => router.push("/weekly-theme"), WELCOME_DELAY_MS);
+    // /home이 로그인 직후 프로필 유무를 확인해서 온보딩 또는 홈으로 알맞게 보낸다.
+    window.setTimeout(() => router.push("/home"), WELCOME_DELAY_MS);
   }
 
   if (status === "welcome") {

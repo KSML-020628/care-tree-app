@@ -1,6 +1,6 @@
 "use client";
 
-import { TOOL_CONFIGS } from "@/lib/config/tools";
+import { TOOL_CONFIGS, type ToolConfig } from "@/lib/config/tools";
 import { UI_TEXT } from "@/lib/constants/ui-text";
 import type { BrushSize, DrawingTool } from "@/types/drawing";
 import BrushSizeSelector from "./BrushSizeSelector";
@@ -10,15 +10,23 @@ interface ToolPaletteProps {
   onToolChange: (tool: DrawingTool) => void;
   brushSize: BrushSize;
   onBrushSizeChange: (size: BrushSize) => void;
+  /** 기본은 전체 도구. 프로필 그림판처럼 더 단순한 화면에서는 도구 목록을 줄여서 넘긴다. */
+  tools?: readonly ToolConfig[];
 }
 
 /** 왼쪽 도구 영역. 아이콘과 한글 이름을 함께 보여줘서 글을 몰라도 아이콘만으로 고를 수 있게 한다. */
-export default function ToolPalette({ tool, onToolChange, brushSize, onBrushSizeChange }: ToolPaletteProps) {
+export default function ToolPalette({
+  tool,
+  onToolChange,
+  brushSize,
+  onBrushSizeChange,
+  tools = TOOL_CONFIGS,
+}: ToolPaletteProps) {
   return (
     <aside className="flex w-[132px] shrink-0 flex-col gap-3 overflow-y-auto rounded-[24px] bg-white p-3 shadow-soft">
       <p className="text-center text-sm font-bold text-text-secondary">{UI_TEXT.drawing.tools}</p>
       <div className="flex flex-col gap-2">
-        {TOOL_CONFIGS.map((config) => {
+        {tools.map((config) => {
           const Icon = config.icon;
           const selected = tool === config.id;
           return (

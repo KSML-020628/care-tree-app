@@ -8,9 +8,11 @@ import LogoutButton from "@/components/common/LogoutButton";
 import PageHeader from "@/components/common/PageHeader";
 import TabletShell from "@/components/common/TabletShell";
 import CareHam from "@/components/mascot/CareHam";
+import ProfileHeader from "@/components/profile/ProfileHeader";
 import SeedJar from "@/components/reward/SeedJar";
 import { getActiveTheme } from "@/lib/config/themes";
 import { UI_TEXT } from "@/lib/constants/ui-text";
+import { useProfileStore } from "@/lib/store/profile-store";
 import { useRewardStore } from "@/lib/store/reward-store";
 import { useSessionStore } from "@/lib/store/session-store";
 import { readAssignment } from "@/lib/utils/random-assignment";
@@ -29,6 +31,9 @@ export default function HomePage() {
   const setAssignment = useSessionStore((state) => state.setAssignment);
   const loadRewards = useRewardStore((state) => state.loadForParticipant);
   const totalSeeds = useRewardStore((state) => state.totalSeeds);
+  const profile = useProfileStore((state) => state.profile);
+  const profileLoaded = useProfileStore((state) => state.loaded);
+  const loadProfile = useProfileStore((state) => state.loadProfile);
 
   const [assignment, setLocalAssignment] = useState<DrawingAssignment | null | undefined>(undefined);
 
@@ -41,14 +46,20 @@ export default function HomePage() {
     const theme = getActiveTheme();
     setTheme(theme);
     loadRewards(user.id);
+    loadProfile(user.id);
     // localStorage는 브라우저에만 있어서, 서버 렌더링 결과와 달라지지 않도록 마운트된 뒤에만 읽는다.
     const existing = readAssignment(user.id, theme.id);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 위 이유로 의도된 패턴
     setLocalAssignment(existing);
     if (existing) setAssignment(existing);
-  }, [user, setTheme, setAssignment, loadRewards]);
+  }, [user, setTheme, setAssignment, loadRewards, loadProfile]);
 
-  if (!user || assignment === undefined) {
+  // 아직 프로필 그림을 만들지 않은 사용자는 홈 대신 온보딩으로 보낸다(최초 로그인 흐름).
+  useEffect(() => {
+    if (profileLoaded && !profile?.onboardingCompleted) router.replace("/onboarding/profile");
+  }, [profileLoaded, profile, router]);
+
+  if (!user || assignment === undefined || !profileLoaded || !profile?.onboardingCompleted) {
     return (
       <TabletShell background="sky">
         <div className="flex flex-1 items-center justify-center">
@@ -68,7 +79,15 @@ export default function HomePage() {
 
   return (
     <TabletShell background="sky">
-      <PageHeader title={UI_TEXT.common.serviceName} rightSlot={<LogoutButton />} />
+      <PageHeader
+        title={UI_TEXT.common.serviceName}
+        rightSlot={
+          <div className="flex items-center gap-2">
+            <ProfileHeader profile={profile} />
+            <LogoutButton />
+          </div>
+        }
+      />
 
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-6">
         <CareHam type="GUIDE" size="LARGE" reaction="WAVE" />

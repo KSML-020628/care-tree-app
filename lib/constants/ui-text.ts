@@ -106,4 +106,47 @@ export const UI_TEXT = {
     jarLabel: "해바라씨 항아리",
     gained: "해바라씨가 항아리에 쏙 들어갔어요!",
   },
+  onboarding: {
+    title: "나를 나타내는 그림을 그려볼까요?",
+    body: "친구들이 네 그림을 보고 누가 함께 색칠했는지 알 수 있어요.",
+    hint: "동물, 별, 꽃, 자동차처럼 좋아하는 것을 그려도 좋아요.",
+    guideMessage: "네가 좋아하는 모습을 자유롭게 그려줘!",
+    startDrawing: "그림 그리기",
+    recommendByCareHam: "케어햄이 추천해줘요",
+    /** 보호자·운영자 전용 임시 경로. 아동에게 "건너뛰기"라고 하지 않는다. */
+    startWithDefaultCareHam: "다음에 그릴게요",
+  },
+  profileDraw: {
+    heading: "나를 나타내는 그림",
+    hint: "어떤 그림도 좋아요. 너를 나타내는 그림을 그려보세요!",
+    done: "다 그렸어요!",
+  },
+  profilePreview: {
+    heading: "친구들에게 이렇게 보여요!",
+    confirm: "이 그림으로 할래요",
+    keepDrawing: "조금 더 그릴래요",
+  },
+  profileHub: {
+    heading: "내 화가 표시",
+    contributionsLabel: "내가 함께 만든 작품",
+    recentWorksLabel: "최근 우리 그림",
+    redrawQuestion: "내 그림을 새로 그리고 싶나요?",
+    redraw: "새로 그리기",
+    keepCurrent: "지금 그림 그대로 둘래요",
+    viewMine: "내 그림 보기",
+  },
+  participants: {
+    heading: "함께 그린 화가 친구들",
+    galleryHeading: "이 그림을 함께 만든 화가 친구들이에요.",
+    me: "나",
+    careHamJoined: "케어햄도 함께 색칠했어요.",
+  },
 } as const;
+
+/** 참여자 카드에서 "누가 어디를 그렸는지" 보여줄 때 쓰는, 사분면별 화가 카드 문구. */
+export const PARTICIPANT_QUADRANT_LABEL: Record<"TOP_LEFT" | "TOP_RIGHT" | "BOTTOM_LEFT" | "BOTTOM_RIGHT", string> = {
+  TOP_LEFT: "왼쪽 위 그림",
+  TOP_RIGHT: "오른쪽 위 그림",
+  BOTTOM_LEFT: "왼쪽 아래 그림",
+  BOTTOM_RIGHT: "오른쪽 아래 그림",
+};

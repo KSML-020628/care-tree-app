@@ -1,8 +1,10 @@
 /**
  * @supabase/supabase-js를 실제로 네트워크로 호출하지 않고도 테스트가 돌아가도록 만든 아주 얇은
- * 인메모리 대역이다. lib/mock/weekly-canvas.ts가 실제로 쓰는 체이닝 패턴만 지원한다:
+ * 인메모리 대역이다. lib/mock/weekly-canvas.ts·lib/profile/profile-storage.ts가 실제로 쓰는
+ * 체이닝 패턴만 지원한다:
  *   .from(table).select("*").eq(col, val).maybeSingle()
  *   .from(table).select("*").eq(col, val)                (그냥 await)
+ *   .from(table).select("*").in(col, values)
  *   .from(table).select("*").order(col, { ascending })
  *   .from(table).upsert(row | row[], { ignoreDuplicates? }).select().single()
  *   .from(table).update(patch).eq(col, val).eq(col2, val2)
@@ -17,6 +19,7 @@ class FakeTable {
 
 class FakeQuery implements PromiseLike<{ data: unknown; error: null }> {
   private filters: Array<[string, unknown]> = [];
+  private inFilters: Array<[string, unknown[]]> = [];
   private mode: "select" | "upsert" | "update" = "select";
   private payload: Row | Row[] | null = null;
   private ignoreDuplicates = false;
@@ -30,6 +33,11 @@ class FakeQuery implements PromiseLike<{ data: unknown; error: null }> {
 
   eq(column: string, value: unknown): this {
     this.filters.push([column, value]);
+    return this;
+  }
+
+  in(column: string, values: unknown[]): this {
+    this.inFilters.push([column, values]);
     return this;
   }
 
@@ -67,7 +75,10 @@ class FakeQuery implements PromiseLike<{ data: unknown; error: null }> {
   }
 
   private matches(row: Row): boolean {
-    return this.filters.every(([column, value]) => row[column] === value);
+    return (
+      this.filters.every(([column, value]) => row[column] === value) &&
+      this.inFilters.every(([column, values]) => values.includes(row[column]))
+    );
   }
 
   private async execute(wantsSingle: boolean): Promise<{ data: unknown; error: null }> {

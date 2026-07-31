@@ -106,6 +106,37 @@ create policy "anon update drawing_contributions" on drawing_contributions for u
 localStorage 방식을 그대로 옮긴 것). 조각 하나에 수백 KB~1MB 정도라 당장은 문제없지만, 그림이
 많이 쌓이면 Supabase Storage(버킷 + signed URL)로 옮기는 게 낫다.
 
+### 추가로 실행할 SQL — 프로필 그림 기능
+
+위 스키마를 이미 실행했다면, 프로필(화가 이름·직접 그린 프로필 그림) 기능을 위해 아래를
+**한 번 더** SQL Editor에서 실행해야 한다.
+
+```sql
+create table if not exists child_profiles (
+  id text primary key,
+  artist_name text not null,
+  avatar_image_url text,
+  avatar_source text not null default 'DEFAULT_CAREHAM'
+    check (avatar_source in ('DRAWN', 'DEFAULT_CAREHAM')),
+  onboarding_completed boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table drawing_contributions add column if not exists participant_snapshot jsonb;
+
+alter table child_profiles enable row level security;
+
+create policy "anon read child_profiles" on child_profiles for select using (true);
+create policy "anon insert child_profiles" on child_profiles for insert with check (true);
+create policy "anon update child_profiles" on child_profiles for update using (true);
+```
+
+`child_profiles.id`는 `participant_id`와 그대로 같은 값을 쓴다(아이 한 명당 프로필은 하나뿐이라
+별도 uuid가 필요 없다). `participant_snapshot`(jsonb)은 그림을 제출한 "그 순간"의 화가 이름·
+프로필 그림을 그대로 얼려서 저장한다 — 나중에 프로필을 새로 그려도 이미 제출된 옛 작품의
+참여자 표시는 바뀌지 않는다.
+
 ## 테스트용 등록번호
 
 - **123456** – 등록된 mock 계정(닉네임: 파랑구름, 별빛어린이병원)
@@ -167,18 +198,21 @@ components/
   mascot/                  케어햄(CareHam, CareHamReaction, CareHamSpeechBubble)
   reward/                  제출 축하 연출(SubmissionCelebration, SeedJar, SeedDropAnimation, PraiseOverlay)
   artwork/                 ArtworkMotion(AI 모션 적용), ContributionGallery, SharedCanvasPreview
+  profile/                 프로필 그림(ProfileAvatar, ProfileHeader, ProfilePreviewCard, Participant*)
+  onboarding/              최초 로그인 프로필 안내(ProfileOnboardingIntro)
   drawing/, assignment/, auth/, common/, result/, theme/   (기존 그림판·배정·로그인 UI)
 lib/
   ai/                      types/schema(Zod)/prompt/client(OpenAI, server-only)/fallback/index
   mascot/                  mascot-config.ts, praise-messages.ts(사전 검수 문장 풀 + 금지어 검사)
+  profile/                 profile.types.ts, profile-storage.ts(Supabase), profile-image-processing.ts
   rewards/                 seed-config.ts, seed-ledger.ts(append-only 해바라씨 원장)
-  config/                  주제·사분면·도구·색상·굵기 설정
+  config/                  주제·사분면·도구·색상·굵기 설정(프로필용 축소 팔레트 포함)
   constants/                이미지 경로, 화면 문구(UI_TEXT)
   mock/                    사용자 인증(로그인)·주제는 mock, 주간 캔버스/기여물은 Supabase 연동
   storage/                 localStorage 저장소
   supabase/                Supabase 클라이언트(anon 키, 브라우저 전용)
   drawing/                 캔버스 crop·투명화·합성·stroke 렌더링·반짝이 생성
-  store/                   zustand: session, drawing, reward, ai
+  store/                   zustand: session, drawing, reward, ai, profile
   utils/                   사분면 랜덤 배정(AssignmentRepository 인터페이스 포함)
 types/                     도메인 타입(theme, assignment, room, drawing, user)
 tests/                     vitest 단위 테스트(helpers/fake-supabase.ts로 Supabase 없이도 실행됨)
@@ -194,9 +228,11 @@ tests/                     vitest 단위 테스트(helpers/fake-supabase.ts로 S
 | 이번 주 주제 조회 | `lib/config/themes.ts`의 고정 배열 | `lib/mock/theme.ts`의 `fetchActiveTheme` |
 | 사분면 배정 | localStorage 기반 랜덤 배정(단, 취한 자리 조회는 아래 Supabase 데이터를 본다) | `lib/utils/random-assignment.ts`(`AssignmentRepository` 인터페이스로 이미 분리됨) |
 | **주간 캔버스·기여물** | **Supabase(`weekly_canvases`/`drawing_contributions`)** — 아직 안 채워진 자리는 mock 케어햄 색칠본으로 즉시 채움(실시간 대기 없음) | `lib/mock/weekly-canvas.ts`, `lib/supabase/client.ts` |
+| **프로필(화가 이름·프로필 그림)** | **Supabase(`child_profiles`)** — 123456과 111111처럼 서로 다른 로그인도 서로의 프로필을 본다 | `lib/profile/profile-storage.ts` |
 | 해바라씨 원장 | localStorage, append-only | `lib/rewards/seed-ledger.ts` |
 | AI 작품 분석 | OpenAI 호출 + Zod 검증, 실패 시 즉시 fallback(결과는 localStorage 캐시) | `lib/ai/artwork-analysis.client.ts`, `app/api/ai/artwork-analysis/route.ts` |
-| 그림 자동저장 | localStorage | `lib/storage/local-drawing-storage.ts` |
+| 프로필 그림 정제 | AI를 연결하지 않고 항상 원본을 그대로 씀(passthrough) | `lib/profile/profile-image-processing.ts` |
+| 그림 자동저장 | localStorage(프로필 그림도 같은 매커니즘을 `profile-{participantId}` id로 재사용) | `lib/storage/local-drawing-storage.ts` |
 
 ## 알려진 제한사항
 
@@ -220,9 +256,17 @@ tests/                     vitest 단위 테스트(helpers/fake-supabase.ts로 S
   요청자를 구분할 방법이 없기 때문입니다). 등록번호 로그인을 실제 Supabase Auth와 연결하기
   전까지는, 이론적으로 누구나 다른 병원의 캔버스에 쓸 수 있는 상태입니다 — MVP/데모 범위의
   의도된 단순화이며, 운영 전환 시 반드시 좁혀야 합니다.
-- 조각 이미지는 Supabase Storage 버킷이 아니라 `drawing_contributions` 테이블에 base64 텍스트로
+- 조각 이미지와 프로필 그림 모두 Supabase Storage 버킷이 아니라 테이블에 base64 텍스트로
   그대로 저장됩니다(기존 localStorage 방식을 그대로 옮긴 것). 그림이 많이 쌓이면 Storage로
   옮기는 게 낫습니다.
+- 프로필 그림 정제(투명 배경·가장자리 정리)는 실제 이미지 편집 AI를 연결하지 않고 항상 원본을
+  그대로 씁니다(`lib/profile/profile-image-processing.ts`). 이 프로젝트에 이미 붙어 있는 OpenAI
+  연동은 "그림을 보고 글로 설명하는" 용도라 "그림을 다시 그려주는" 이미지 편집 API와는 다르며,
+  그런 API를 새로 연결하는 건 이번 범위 밖입니다. `AvatarProcessingResult` 타입은 나중에 실제
+  이미지 편집 API를 붙일 자리로 미리 만들어 뒀습니다.
+- 온보딩의 "기본 케어햄으로 시작하기"는 보호자·운영자 전용으로 의도했지만, 이 프로젝트에는
+  보호자 로그인/권한 체계가 없습니다. 그래서 실제로는 화면에 작고 눈에 덜 띄는 링크로만
+  두었을 뿐, 버튼 자체를 누르지 못하게 막지는 않습니다.
 - AI 분석은 실제 키(`gpt-5.4-mini`)로 엔드투엔드 호출까지 확인했습니다(`source: "AI"` 응답 확인).
   키가 접근 가능한 모델이 vision 입력이나 구조화된 JSON 출력을 지원하지 않으면 매 요청이
   fallback으로 처리되며, 이 경우에도 아이 경험은 전혀 끊기지 않습니다.

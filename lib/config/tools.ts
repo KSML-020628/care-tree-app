@@ -25,3 +25,9 @@ export function getToolConfig(tool: DrawingTool): ToolConfig {
   if (!found) throw new Error(`알 수 없는 도구예요: ${tool}`);
   return found;
 }
+
+/** 프로필 그림판에서 쓰는 도구 3종(굵은 연필·붓·지우개). 전체 도구보다 단순하게 유지한다. */
+const PROFILE_TOOL_IDS: readonly DrawingTool[] = ["PENCIL", "BRUSH", "ERASER"];
+export const PROFILE_TOOL_CONFIGS: readonly ToolConfig[] = TOOL_CONFIGS.filter((config) =>
+  PROFILE_TOOL_IDS.includes(config.id),
+);

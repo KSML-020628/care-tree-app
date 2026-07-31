@@ -3,13 +3,16 @@
 import { Archive, Sparkles, X, ZoomIn } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import AssignmentHighlight from "@/components/assignment/AssignmentHighlight";
 import ChildButton from "@/components/common/ChildButton";
 import TabletShell from "@/components/common/TabletShell";
 import ContributionGallery from "@/components/artwork/ContributionGallery";
 import CareHam from "@/components/mascot/CareHam";
 import CompletionAnimation from "@/components/result/CompletionAnimation";
 import CompositeCanvas from "@/components/result/CompositeCanvas";
+import ParticipantAvatarList from "@/components/profile/ParticipantAvatarList";
 import { UI_TEXT } from "@/lib/constants/ui-text";
+import { getQuadrantPercentRect } from "@/lib/config/quadrants";
 import { createTransparentLineArt } from "@/lib/drawing/quadrant-crop";
 import { fetchActiveTheme } from "@/lib/mock/theme";
 import { readContributions, readWeeklyCanvas } from "@/lib/mock/weekly-canvas";
@@ -46,6 +49,7 @@ export default function ResultPage() {
   const [transparentLineArtSrc, setTransparentLineArtSrc] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("animating");
   const [showLargeView, setShowLargeView] = useState(false);
+  const [highlightedQuadrant, setHighlightedQuadrant] = useState<Quadrant | null>(null);
 
   useEffect(() => {
     readWeeklyCanvas(params.roomId).then(setCanvas);
@@ -102,7 +106,10 @@ export default function ResultPage() {
               <Sparkles aria-hidden="true" className="text-accent-yellow-dark" />
             </div>
 
-            <CompositeCanvas weeklyCanvasId={canvas.id} transparentLineArtSrc={transparentLineArtSrc} />
+            <div className="relative aspect-square w-full max-w-[480px]">
+              <CompositeCanvas weeklyCanvasId={canvas.id} transparentLineArtSrc={transparentLineArtSrc} fill />
+              {highlightedQuadrant && <AssignmentHighlight style={getQuadrantPercentRect(highlightedQuadrant)} />}
+            </div>
 
             <dl className="grid w-full max-w-md grid-cols-2 gap-3 rounded-[24px] bg-white/90 p-5 text-sm shadow-soft">
               <div>
@@ -122,6 +129,12 @@ export default function ResultPage() {
                 <dd className="text-lg font-extrabold text-text-primary">{koreanDateToday()}</dd>
               </div>
             </dl>
+
+            <ParticipantAvatarList
+              contributions={sharedContributions}
+              currentUserId={user?.id}
+              onSelectQuadrant={setHighlightedQuadrant}
+            />
 
             <div className="grid w-full max-w-md grid-cols-1 gap-3">
               <ChildButton variant="accent" size="large" icon={ZoomIn} fullWidth onClick={() => setShowLargeView(true)}>

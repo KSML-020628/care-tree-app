@@ -7,6 +7,7 @@ import PageHeader from "@/components/common/PageHeader";
 import TabletShell from "@/components/common/TabletShell";
 import SharedCanvasPreview from "@/components/artwork/SharedCanvasPreview";
 import CareHamReaction from "@/components/mascot/CareHamReaction";
+import ParticipantAvatarList from "@/components/profile/ParticipantAvatarList";
 import { isAnalysisDisplayable } from "@/lib/ai/artwork-analysis-display";
 import { UI_TEXT } from "@/lib/constants/ui-text";
 import { createTransparentLineArt } from "@/lib/drawing/quadrant-crop";
@@ -109,6 +110,11 @@ export default function SharedCanvasPage() {
           <p className="text-lg font-bold text-text-primary">{UI_TEXT.sharedCanvas.intro1}</p>
           <p className="mt-1 text-sm font-semibold text-text-secondary">{UI_TEXT.sharedCanvas.intro2}</p>
         </div>
+
+        <ParticipantAvatarList
+          contributions={contributions.filter((item) => item.status === "SHARED")}
+          currentUserId={user?.id}
+        />
 
         <div className="grid w-full max-w-md grid-cols-1 gap-3">
           <ChildButton variant="accent" size="large" fullWidth onClick={() => router.push(`/result/${canvas.id}`)}>

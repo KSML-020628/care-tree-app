@@ -48,3 +48,9 @@ export function getColorOption(id: string): ColorOption {
   const found = COLOR_PALETTE.find((color) => color.id === id);
   return found ?? COLOR_PALETTE[0];
 }
+
+/** 프로필 그림판에서 쓰는 8색. 전체 팔레트보다 단순하게 유지한다. */
+const PROFILE_COLOR_IDS = ["red", "orange", "yellow", "green", "blue", "purple", "pink", "brown"];
+export const PROFILE_COLOR_PALETTE: readonly ColorOption[] = COLOR_PALETTE.filter((color) =>
+  PROFILE_COLOR_IDS.includes(color.id),
+);

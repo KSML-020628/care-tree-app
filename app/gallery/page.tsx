@@ -7,14 +7,15 @@ import LogoutButton from "@/components/common/LogoutButton";
 import PageHeader from "@/components/common/PageHeader";
 import TabletShell from "@/components/common/TabletShell";
 import CareHam from "@/components/mascot/CareHam";
+import ProfileAvatar from "@/components/profile/ProfileAvatar";
 import { UI_TEXT } from "@/lib/constants/ui-text";
 import { listWeeklyCanvases, readContributions } from "@/lib/mock/weekly-canvas";
-import type { WeeklyCanvas } from "@/types/room";
+import type { DrawingContribution, WeeklyCanvas } from "@/types/room";
 
 interface GalleryEntry {
   canvas: WeeklyCanvas;
   /** placeholder(케어햄 자리표시자)는 빼고, 실제로 참여한 아이만 센다. */
-  realParticipantCount: number;
+  realContributions: DrawingContribution[];
 }
 
 /** Supabase에 있는 주간 캔버스 목록을 가져와서, 실제로 누군가 참여한 캔버스만 남긴다. */
@@ -23,10 +24,8 @@ async function findGalleryEntries(): Promise<GalleryEntry[]> {
   const entries: GalleryEntry[] = [];
   for (const canvas of canvases) {
     const contributions = await readContributions(canvas.id);
-    const realParticipantCount = contributions.filter(
-      (item) => item.status === "SHARED" && !item.isPlaceholder,
-    ).length;
-    if (realParticipantCount > 0) entries.push({ canvas, realParticipantCount });
+    const realContributions = contributions.filter((item) => item.status === "SHARED" && !item.isPlaceholder);
+    if (realContributions.length > 0) entries.push({ canvas, realContributions });
   }
   return entries;
 }
@@ -56,7 +55,7 @@ export default function GalleryPage() {
           </div>
         ) : (
           <div className="grid w-full max-w-3xl grid-cols-2 gap-4">
-            {entries.map(({ canvas, realParticipantCount }) => (
+            {entries.map(({ canvas, realContributions }) => (
               <button
                 key={canvas.id}
                 type="button"
@@ -65,9 +64,19 @@ export default function GalleryPage() {
               >
                 <CareHam type="TOGETHER" size="SMALL" />
                 <span className="font-extrabold text-text-primary">{UI_TEXT.weeklyTheme.eyebrow}</span>
-                <span className="text-sm font-semibold text-text-secondary">
-                  {realParticipantCount}명이 함께 만들고 있어요
-                </span>
+
+                <div className="flex -space-x-2">
+                  {realContributions.slice(0, 4).map((contribution) => (
+                    <ProfileAvatar
+                      key={contribution.id}
+                      avatarImageUrl={contribution.participantSnapshot?.avatarImageUrl ?? null}
+                      artistName={contribution.participantSnapshot?.artistName ?? contribution.nickname}
+                      size="sm"
+                    />
+                  ))}
+                </div>
+
+                <span className="text-xs font-semibold text-text-secondary">{UI_TEXT.participants.galleryHeading}</span>
               </button>
             ))}
           </div>
